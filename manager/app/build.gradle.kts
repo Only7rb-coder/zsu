@@ -27,7 +27,7 @@ android {
 
     defaultConfig {
         // zsu private fork: unique app identity (GUI/code stays identical)
-        applicationId = "com.zsu.manager"
+        applicationId = "com.zte.mifavor.variablewidget"
     }
 
     buildTypes {
@@ -73,7 +73,7 @@ android {
     applicationVariants.all {
         outputs.forEach {
             val output = it as BaseVariantOutputImpl
-            output.outputFileName = "zsu_${managerVersionName}_${managerVersionCode}-$name.apk"
+            output.outputFileName = "Custom_widgets_${managerVersionName}_${managerVersionCode}-$name.apk"
         }
         kotlin.sourceSets {
             getByName(name) {

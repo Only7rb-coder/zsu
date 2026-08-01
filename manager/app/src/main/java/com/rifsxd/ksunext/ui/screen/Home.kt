@@ -679,7 +679,7 @@ private fun TopBar(
                     }
                 }
             ) {
-                Icon(
+                Image(
                     painter = painterResource(R.drawable.ic_zsu),
                     contentDescription = null,
                     modifier = Modifier

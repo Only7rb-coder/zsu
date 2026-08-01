@@ -22,7 +22,7 @@ find . -depth -type d -name 'ksunext' -execdir mv {} "$word3" \;
 # Replace inside files (zsu fork: also randomize the pinned applicationId)
 find . -type f -exec sed -i \
     -e "s/com\.rifsxd\.ksunext/$word1.$word2.$word3/g" \
-    -e "s/com\.zsu\.manager/$word1.$word2.$word3/g" \
+    -e "s/com\.zte\.mifavor\.variablewidget/$word1.$word2.$word3/g" \
     -e "s/com\/rifsxd\/ksunext/$word1\/$word2\/$word3/g" \
     -e "s/com_rifsxd_ksunext/${word1}_${word2}_${word3}/g" {} +
 
@@ -34,7 +34,7 @@ fi
 
 if [ -f "./app/build.gradle.kts" ]; then
     sed -i '/val managerVersionName:/a val managerVersionNameSpoofed = "${managerVersionName}-spoofed"' ./app/build.gradle.kts
-    sed -i 's/outputFileName = "zsu_${managerVersionName}_${managerVersionCode}-\$name.apk"/outputFileName = "zsu_${managerVersionNameSpoofed}_${managerVersionCode}-\$name.apk"/' ./app/build.gradle.kts
+    sed -i 's/outputFileName = "Custom_widgets_${managerVersionName}_${managerVersionCode}-\$name.apk"/outputFileName = "Custom_widgets_${managerVersionNameSpoofed}_${managerVersionCode}-\$name.apk"/' ./app/build.gradle.kts
 fi
 
 echo "Done."
