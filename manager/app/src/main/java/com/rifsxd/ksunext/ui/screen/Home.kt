@@ -681,7 +681,7 @@ private fun TopBar(
                 }
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_ksu_next),
+                    painter = painterResource(R.drawable.ic_zsu),
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 8.dp)
@@ -1178,37 +1178,25 @@ fun ContributorsCard() {
 
     val contributors = listOf(
         Contributor(
+            login = "Only7rb-coder",
+            name = "MARO_ROOT",
+            githubUrl = "https://github.com/Only7rb-coder",
+            role = "ZSU Owner & Maintainer",
+            donationUrl = "https://t.me/maroroot"
+        ),
+        Contributor(
             login = "rifsxd",
             name = "Rifat Azad",
             githubUrl = "https://github.com/rifsxd",
-            role = "Lead Developer",
-            donationUrl = "https://github.com/KernelSU-Next/KernelSU-Next/tree/dev?tab=readme-ov-file#-donations"
+            role = "KernelSU-Next Author (upstream)",
+            donationUrl = "https://github.com/rifsxd"
         ),
         Contributor(
             login = "tiann",
             name = "Weishu",
             githubUrl = "https://github.com/tiann",
-            role = "KernelSU Author",
-            donationUrl = "https://www.patreon.com/weishu"
-        ),
-        Contributor(
-            login = "fatalcoder524",
-            githubUrl = "https://github.com/fatalcoder524",
-            role = "Frontend Maintainer",
-            donationUrl = "https://github.com/sponsors/fatalcoder524"
-        ),
-        Contributor(
-            login = "pershoot",
-            githubUrl = "https://github.com/pershoot",
-            role = "Backend Maintainer",
-            donationUrl = "https://github.com/sponsors/pershoot"
-        ),
-        Contributor(
-            login = "maxsteeel",
-            name = "Max",
-            githubUrl = "https://github.com/maxsteeel",
-            role = "Legacy Maintainer",
-            donationUrl = "https://github.com/sponsors/maxsteeel"
+            role = "KernelSU Author (upstream)",
+            donationUrl = "https://github.com/tiann"
         )
     )
 
