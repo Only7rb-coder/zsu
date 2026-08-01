@@ -54,7 +54,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    return getGitDescribe()
+    // ZSU: static disguised version string (ZTE widget-style), shown in App info
+    return "15.0.000.2504111533"
 }
 
 subprojects {
