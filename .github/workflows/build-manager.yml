@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        spoofed: [ false ]
+        spoofed: [ false, true ]
 
     defaults:
       run:
