@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
@@ -20,7 +20,7 @@ fun LinkifyText(
     text: String,
     modifier: Modifier = Modifier
 ) {
-    val uriHandler = LocalUriHandler.current
+    val zsuLinkContext = LocalContext.current
     val layoutResult = remember {
         mutableStateOf<TextLayoutResult?>(null)
     }
@@ -53,7 +53,7 @@ fun LinkifyText(
                     annotatedString.getStringAnnotations(position, position).firstOrNull()
                         ?.let { result ->
                             if (result.tag == "URL") {
-                                uriHandler.openUri(result.item)
+                                safeOpenUri(zsuLinkContext, result.item)
                             }
                         }
                 }

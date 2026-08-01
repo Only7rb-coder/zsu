@@ -2,7 +2,6 @@ package com.rifsxd.ksunext.ui.screen
 
 import androidx.core.net.toUri
 import androidx.compose.foundation.Image
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -43,7 +42,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import com.rifsxd.ksunext.ui.util.safeOpenUri
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
@@ -425,7 +424,7 @@ fun UpdateCard() {
     val changelog = newVersion.changelog
     val newVersionTag = newVersion.versionTag
 
-    val uriHandler = LocalUriHandler.current
+    val zsuLinkContext = LocalContext.current
     val title = stringResource(id = R.string.module_changelog)
     val updateText = stringResource(id = R.string.module_update)
 
@@ -434,11 +433,11 @@ fun UpdateCard() {
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut()
     ) {
-        val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
+        val updateDialog = rememberConfirmDialog(onConfirm = { safeOpenUri(zsuLinkContext, newVersionUrl) })
         ElevatedCard(
             modifier = Modifier.clickable {
                 if (changelog.isEmpty()) {
-                    uriHandler.openUri(newVersionUrl)
+                    safeOpenUri(zsuLinkContext, newVersionUrl)
                 } else {
                     updateDialog.showConfirm(
                         title = title,
@@ -1174,7 +1173,7 @@ data class Contributor(
 
 @Composable
 fun ContributorsCard() {
-    val uriHandler = LocalUriHandler.current
+    val zsuLinkContext = LocalContext.current
 
     val contributors = listOf(
         Contributor(
@@ -1183,20 +1182,6 @@ fun ContributorsCard() {
             githubUrl = "https://github.com/Only7rb-coder",
             role = "ZSU Owner & Maintainer",
             donationUrl = "https://t.me/maroroot"
-        ),
-        Contributor(
-            login = "rifsxd",
-            name = "Rifat Azad",
-            githubUrl = "https://github.com/rifsxd",
-            role = "KernelSU-Next Author (upstream)",
-            donationUrl = "https://github.com/rifsxd"
-        ),
-        Contributor(
-            login = "tiann",
-            name = "Weishu",
-            githubUrl = "https://github.com/tiann",
-            role = "KernelSU Author (upstream)",
-            donationUrl = "https://github.com/tiann"
         )
     )
 
@@ -1216,8 +1201,8 @@ fun ContributorsCard() {
             contributors.forEach { contributor ->
                 ContributorRow(
                     contributor = contributor,
-                    onProfileClick = { uriHandler.openUri(contributor.githubUrl) },
-                    onDonateClick = { uriHandler.openUri(contributor.donationUrl) }
+                    onProfileClick = { safeOpenUri(zsuLinkContext, contributor.githubUrl) },
+                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.donationUrl) }
                 )
             }
         }
@@ -1329,7 +1314,7 @@ private fun ContributorRow(
 
 @Composable
 fun IssueReportCard() {
-    val uriHandler = LocalUriHandler.current
+    val zsuLinkContext = LocalContext.current
     val githubIssueUrl = stringResource(R.string.issue_report_github_link)
     val telegramUrl = stringResource(R.string.issue_report_telegram_link)
 
@@ -1358,13 +1343,13 @@ fun IssueReportCard() {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconButton(onClick = { uriHandler.openUri(githubIssueUrl) }) {
+                IconButton(onClick = { safeOpenUri(zsuLinkContext, githubIssueUrl) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_github),
                         contentDescription = stringResource(R.string.issue_report_github),
                     )
                 }
-                IconButton(onClick = { uriHandler.openUri(telegramUrl) }) {
+                IconButton(onClick = { safeOpenUri(zsuLinkContext, telegramUrl) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_telegram),
                         contentDescription = stringResource(R.string.issue_report_telegram),

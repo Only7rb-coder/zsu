@@ -1,6 +1,7 @@
 package com.rifsxd.ksunext.ui.component
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.rifsxd.ksunext.BuildConfig
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.ui.util.safeOpenUri
 
 @Preview
 @Composable
@@ -86,28 +89,17 @@ private fun AboutCardContent() {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val annotatedString = AnnotatedString.fromHtml(
-                    htmlString = stringResource(
-                        id = R.string.about_source_code,
-                        "<b><a href=\"https://github.com/Only7rb-coder/zsu\">GitHub</a></b>"
-                    ),
-                    linkStyles = TextLinkStyles(
-                        style = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            textDecoration = TextDecoration.Underline
-                        ),
-                        pressedStyle = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            background = MaterialTheme.colorScheme.secondaryContainer,
-                            textDecoration = TextDecoration.Underline
-                        )
-                    )
-                )
+                val zsuLinkContext = LocalContext.current
                 Text(
-                    text = annotatedString,
+                    text = stringResource(id = R.string.about_source_code, "GitHub"),
                     style = TextStyle(
-                        fontSize = 14.sp
-                    )
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline
+                    ),
+                    modifier = Modifier.clickable {
+                        safeOpenUri(zsuLinkContext, "https://github.com/Only7rb-coder/zsu")
+                    }
                 )
             }
         }
