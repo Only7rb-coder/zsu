@@ -237,7 +237,6 @@
   <string name="settings_enable_avc_spoof">AVC Підміна</string>
   <string name="settings_enable_avc_spoof_summary">Виправити витік контексту selinux викликаний відхиленням avc в журналі аудиту.</string>
   <string name="manage_repositories">Керування репозиторіями</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">Поточна версія KernelSU Next %1$d надто низька для коректної роботи менеджера. Будь ласка, оновіться до версії %2$d або вище!</string>
   <string name="profile_umount_modules_summary">Увімкнення цієї опції дозволить KernelSU-Next відновлювати для цього додатка будь-які файли, змінені модулями.</string>
   <string name="settings_uninstall_temporary_message">Тимчасово видалити KernelSU-Next, відновити початковий стан після наступного перезавантаження.</string>

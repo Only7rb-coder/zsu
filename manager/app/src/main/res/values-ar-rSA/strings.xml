@@ -241,7 +241,6 @@ Device diagnostics: Error: IOException: java.io.IOException: Cannot run program 
   <string name="settings_enable_avc_spoof">تزييف AVC</string>
   <string name="settings_enable_avc_spoof_summary">إصلاح تسرب لينكس المحسن أمنيا سياق بسبب رفض الوصول إلى ذاكرة التخزين المؤقت للمتجهات في سجل المراجعة.</string>
   <string name="manage_repositories">إدارة المستودعات</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">إصدار النواة نكست الحالي %1$d قديم جدًا ولا يسمح للمدير بالعمل بشكل صحيح. يُرجى الترقية إلى الإصدار %2$d أو أحدث!</string>
   <string name="profile_umount_modules_summary">سيؤدي تمكين هذا الخِيار إلى السماح لـ النواة نكست باستعادة أي ملفات تم تعديلها بواسطة الوحدات النمطية لهذا التطبيق.</string>
   <string name="settings_uninstall_temporary_message">إلغاء تثبيت النواة نكست مؤقتًا، ثم أعد تشغيل النظام إلى حالته الأصلية بعد إعادة التشغيل التالية.</string>

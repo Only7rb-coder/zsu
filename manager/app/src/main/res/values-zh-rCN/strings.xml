@@ -235,7 +235,6 @@
   <string name="settings_enable_avc_spoof">AVC 日志伪装</string>
   <string name="settings_enable_avc_spoof_summary">修复日志中 avc denial 导致的 SELinux 上下文泄漏。</string>
   <string name="manage_repositories">管理仓库</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">当前 KernelSU-Next 版本 %1$d 过低，管理器无法正常工作。请升级到 %2$d 或更高版本！</string>
   <string name="profile_umount_modules_summary">启用该选项后将允许 KernelSU-Next 为本应用还原被模块修改过的文件。</string>
   <string name="settings_uninstall_temporary_message">临时卸载 KernelSU-Next，设备下次重启后将恢复原状。</string>

@@ -235,7 +235,6 @@
   <string name="settings_enable_avc_spoof">Применять AVC спуфинг</string>
   <string name="settings_enable_avc_spoof_summary">Исправить утечку контекста SELinux, вызванную отказом avc в журнале аудита.</string>
   <string name="manage_repositories">Управление репозиториями</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">Текущая версия KernelSU-Next %1$d слишком стара для корректной работы менеджера. Пожалуйста, обновитесь до версии %2$d или выше!</string>
   <string name="profile_umount_modules_summary">Если этот параметр включен, то все изменения файлов, внесённые модулями, будут восстановлены для данного приложения.</string>
   <string name="settings_uninstall_temporary_message">Временно удаляет KernelSU-Next, восстанавливая исходное состояние после следующей перезагрузки.</string>

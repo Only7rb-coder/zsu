@@ -235,7 +235,6 @@
   <string name="settings_enable_avc_spoof">AVC taklidi</string>
   <string name="settings_enable_avc_spoof_summary">Denetim günlüğünde avc reddi nedeniyle oluşan selinux bağlam sızıntısını düzeltin.</string>
   <string name="manage_repositories">Depoları Yönet</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">Geçerli KernelSU Next sürümü %1$d, yöneticinin düzgün çalışması için çok düşük. Lütfen %2$d veya daha yüksek bir sürüme yükseltin!</string>
   <string name="profile_umount_modules_summary">Bu seçeneğin etkinleştirilmesi, KernelSU Next\'in bu uygulama için modüller tarafından değiştirilen tüm dosyaları geri yüklemesine izin verecektir.</string>
   <string name="settings_uninstall_temporary_message">KernelSU\'yu geçici olarak kaldırın, bir sonraki yeniden başlatmadan sonra orijinal duruma geri dönün.</string>

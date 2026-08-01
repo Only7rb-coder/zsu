@@ -126,12 +126,19 @@ endif
 KSU_NEW_DCACHE_FLUSH := $(shell grep -q __flush_dcache_area $(srctree)/arch/arm64/include/asm/cacheflush.h ; echo $$?)
 $(info -- KernelSU-Next new DCACHE flush: $(KSU_NEW_DCACHE_FLUSH))
 
+# zsu private fork: bind kernel side to the private zsu manager.
+# These values are derived from manager/zsu.keystore (cert DER size + SHA-256).
 ifndef KSU_NEXT_MANAGER_SIZE
-KSU_NEXT_MANAGER_SIZE := 0x3e6
+KSU_NEXT_MANAGER_SIZE := 0x318
 endif
 
 ifndef KSU_NEXT_MANAGER_HASH
-KSU_NEXT_MANAGER_HASH := 79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7
+KSU_NEXT_MANAGER_HASH := ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab
+endif
+
+# zsu private fork: additionally hard-lock the manager package name.
+ifndef KSU_MANAGER_PACKAGE
+KSU_MANAGER_PACKAGE := com.zsu.manager
 endif
 
 ifdef KSU_MANAGER_PACKAGE

@@ -235,7 +235,6 @@
   <string name="settings_enable_avc_spoof">Spoof AVC</string>
   <string name="settings_enable_avc_spoof_summary">Memperbaiki kebocoran konteks SELinux akibat penolakan AVC yang tercatat di log audit.</string>
   <string name="manage_repositories">Kelola Repositori</string>
-  <string name="app_name">KernelSU-Next</string>
   <string name="require_kernel_version">Versi KernelSU-Next saat ini %1$d terlalu rendah agar manajer dapat berfungsi dengan baik. Silakan perbarui ke versi %2$d atau lebih baru!</string>
   <string name="profile_umount_modules_summary">Mengaktifkan opsi ini akan memungkinkan KernelSU-Next untuk memulihkan berkas apa pun yang telah dimodifikasi oleh modul untuk aplikasi ini.</string>
   <string name="settings_uninstall_temporary_message">Hapus sementara KernelSU-Next, dipulihkan ke keadaan semula setelah mulai ulang berikutnya.</string>
