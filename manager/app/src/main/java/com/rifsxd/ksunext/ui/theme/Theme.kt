@@ -38,7 +38,7 @@ fun Color.blend(other: Color, ratio: Float): Color {
 fun KernelSUTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // ZSU: fixed violet identity instead of wallpaper colors
     amoledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
