@@ -27,13 +27,21 @@ jobs:
 
     - name: Build kernelsu.ko
       run: |
-        git config --global --add safe.directory /__w/KernelSU-Next/KernelSU-Next
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+        # Compute the version HERE (git is not reachable from inside the DDK
+        # container during make, so the kernel would fall back to version 1)
+        git fetch --unshallow 2>/dev/null || true
+        git fetch --tags 2>/dev/null || true
+        KSU_VERSION=$((30000 + $(git rev-list --count HEAD)))
+        KSU_VERSION_TAG=$(git describe --tags --always 2>/dev/null || echo "unknown")
+        echo "=== Version: KSU_VERSION=$KSU_VERSION KSU_VERSION_TAG=$KSU_VERSION_TAG ==="
 
         cd kernel
 
         echo "=== Building kernelsu.ko for KMI: ${{ inputs.kmi }} ==="
 
-        CONFIG_KSU=m CC=clang make
+        CONFIG_KSU=m CC=clang make KSU_VERSION=$KSU_VERSION KSU_VERSION_TAG=$KSU_VERSION_TAG
         
         echo "=== Build completed ==="
 
