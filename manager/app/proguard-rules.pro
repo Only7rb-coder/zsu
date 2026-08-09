@@ -37,3 +37,5 @@
 -dontwarn javax.lang.model.util.SimpleTypeVisitor8
 -dontwarn javax.lang.model.util.Types
 -dontwarn javax.tools.Diagnostic$Kind
+# ZSU: keep vendored on-device v2 signer
+-keep class com.rifsxd.ksunext.signing.** { *; }
