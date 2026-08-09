@@ -549,7 +549,7 @@ private fun AppSettingsCard(
                     Text(
                         text = "Clone with custom package, icon & version",
                         style = MaterialTheme.typography.bodyMedium,
-                        overflow = TextOverflow.ellipsis
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             )

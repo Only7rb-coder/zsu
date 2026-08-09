@@ -50,8 +50,10 @@ object DisguiseEngine {
         var p = 0
         fun u16(): Int { val v = (b[p].toInt() and 0xFF) or ((b[p + 1].toInt() and 0xFF) shl 8); p += 2; return v }
         fun u32(): Long {
-            val v = (b[p].toInt() and 0xFFL) or ((b[p + 1].toInt() and 0xFFL) shl 8) or
-                    ((b[p + 2].toInt() and 0xFFL) shl 16) or ((b[p + 3].toInt() and 0xFFL) shl 24)
+            val v = (b[p].toLong() and 0xFF) or
+                    ((b[p + 1].toLong() and 0xFF) shl 8) or
+                    ((b[p + 2].toLong() and 0xFF) shl 16) or
+                    ((b[p + 3].toLong() and 0xFF) shl 24)
             p += 4; return v
         }
         fun u32i(): Int = u32().toInt()

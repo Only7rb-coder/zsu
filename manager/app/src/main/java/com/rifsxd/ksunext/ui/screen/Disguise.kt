@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
  * package name, version and icon, re-signed with the zsu key so the kernel
  * still trusts it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun DisguiseScreen(navigator: DestinationsNavigator) {
@@ -138,7 +139,7 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                         pkgError = "Invalid package name (e.g. com.example.app)"
                         return@dropUnlessResumed
                     }
-                    val vc = versionCode.toLongOrNull() ?: (curVc + 1)
+                    val vc = versionCode.toLongOrNull() ?: (curVc + 1).toLong()
                     scope.launch {
                         loadingDialog.show()
                         val result = withContext(Dispatchers.IO) {
