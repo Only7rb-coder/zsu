@@ -368,7 +368,7 @@ private fun KernelFeaturesCard(
             }
 
             var isSoterDisabled by rememberSaveable {
-                mutableStateOf(prefs.getBoolean("disable_soter", false))
+                mutableStateOf(context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("disable_soter", false))
             }
             SwitchItem(
                 icon = Icons.Filled.PhonelinkErase,
