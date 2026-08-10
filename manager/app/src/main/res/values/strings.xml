@@ -8,7 +8,7 @@
     <string name="issue_report_github_link">https://github.com/Only7rb-coder/zsu/issues</string>
     <string name="issue_report_telegram_link">https://t.me/maroroot</string>
     <string name="confirm">Confirm</string>
-    <string name="app_name" translatable="false">Custom widgets</string>
+    <string name="app_name" translatable="false">ZSU</string>
     <string name="addons" translatable="false">Addons</string>
     <string name="home">Home</string>
     <string name="home_not_installed">Not installed</string>
