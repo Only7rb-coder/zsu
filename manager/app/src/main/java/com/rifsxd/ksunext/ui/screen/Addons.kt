@@ -39,6 +39,7 @@ private data class ModuleSpec(
     val label: String,
     val repo: String,
     val beta: Boolean = false,
+    val preferredTag: String? = null,
     val assetMatch: (String) -> Boolean
 )
 
@@ -46,10 +47,10 @@ private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
         it.endsWith(".zip") && it.contains("release")
     },
-    ModuleSpec("Oh My Keymint", "qwq233/OhMyKeymint") {
+    ModuleSpec("Oh My Keymint", "qwq233/OhMyKeymint", preferredTag = "v1.2.0-85caeb3") {
         it.endsWith(".zip") && it.contains("release") && it.contains("arm64")
     },
-    ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true) {
+    ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true, preferredTag = "v5.0-beta.4") {
         it.endsWith(".zip")
     },
     ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
@@ -62,6 +63,17 @@ private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
 }
 
 private object AddonInstaller {
+    private fun findAsset(rel: JSONObject, spec: ModuleSpec): Pair<String, String>? {
+        val assets = rel.getJSONArray("assets")
+        for (i in 0 until assets.length()) {
+            val a = assets.getJSONObject(i)
+            val name = a.getString("name")
+            if (spec.assetMatch(name)) {
+                return a.getString("browser_download_url") to rel.getString("tag_name")
+            }
+        }
+        return null
+    }
 
     private fun httpGet(url: String): String {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -81,30 +93,30 @@ private object AddonInstaller {
 
     /** Returns (downloadUrl, tag) of the best asset of the latest (beta) release. */
     fun resolveLatest(spec: ModuleSpec): Pair<String, String> {
+        spec.preferredTag?.let { tag ->
+            runCatching {
+                JSONObject(httpGet("https://api.github.com/repos/${spec.repo}/releases/tags/$tag"))
+            }.getOrNull()?.let { rel ->
+                findAsset(rel, spec)?.let { return it }
+            }
+        }
         if (!spec.beta) {
             val rel = JSONObject(httpGet("https://api.github.com/repos/${spec.repo}/releases/latest"))
-            val assets = rel.getJSONArray("assets")
-            for (i in 0 until assets.length()) {
-                val a = assets.getJSONObject(i)
-                val name = a.getString("name")
-                if (spec.assetMatch(name)) {
-                    return a.getString("browser_download_url") to rel.getString("tag_name")
-                }
-            }
+            findAsset(rel, spec)?.let { return it }
             throw Exception("No matching asset in latest release of ${spec.repo}")
         } else {
             val rels = JSONArray(httpGet("https://api.github.com/repos/${spec.repo}/releases?per_page=10"))
+            spec.preferredTag?.let { wanted ->
+                for (i in 0 until rels.length()) {
+                    val rel = rels.getJSONObject(i)
+                    if (rel.getString("tag_name") != wanted) continue
+                    findAsset(rel, spec)?.let { return it }
+                }
+            }
             for (i in 0 until rels.length()) {
                 val rel = rels.getJSONObject(i)
                 if (!rel.getBoolean("prerelease")) continue
-                val assets = rel.getJSONArray("assets")
-                for (j in 0 until assets.length()) {
-                    val a = assets.getJSONObject(j)
-                    val name = a.getString("name")
-                    if (spec.assetMatch(name)) {
-                        return a.getString("browser_download_url") to rel.getString("tag_name")
-                    }
-                }
+                findAsset(rel, spec)?.let { return it }
             }
             throw Exception("No beta release asset in ${spec.repo}")
         }

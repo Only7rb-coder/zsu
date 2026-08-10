@@ -383,6 +383,14 @@ private fun KernelFeaturesCard(
                     // Best effort: forwarded to ksud feature system; no-op where unsupported
                     execKsud("feature disable_soter", true)
                     execKsud("feature save", true)
+                    val packageCmd = if (checked) {
+                        "pm disable-user --user 0 com.tencent.soter.soterserver || pm disable com.tencent.soter.soterserver"
+                    } else {
+                        "pm enable --user 0 com.tencent.soter.soterserver || pm enable com.tencent.soter.soterserver"
+                    }
+                    createRootShell(true).use { shell ->
+                        shell.newJob().add(packageCmd).exec()
+                    }
                     prefsLocal.edit { putBoolean("disable_soter", checked) }
                     isSoterDisabled = checked
                 }

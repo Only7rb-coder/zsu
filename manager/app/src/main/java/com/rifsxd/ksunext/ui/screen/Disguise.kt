@@ -50,8 +50,10 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
     val curPkg = curInfo.packageName
     @Suppress("DEPRECATION") val curVc = curInfo.versionCode
     val curVn = curInfo.versionName ?: "15.0.000.2504111533"
+    val curAppName = remember { pm.getApplicationLabel(context.applicationInfo).toString() }
 
     var pkg by rememberSaveable { mutableStateOf("com.zte.mifavor.variablewidget") }
+    var appName by rememberSaveable { mutableStateOf("ZSU") }
     var versionName by rememberSaveable { mutableStateOf(curVn) }
     var versionCode by rememberSaveable { mutableStateOf((curVc + 1).toString()) }
     var iconBytes by remember { mutableStateOf<ByteArray?>(null) }
@@ -111,6 +113,15 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
             )
 
             OutlinedTextField(
+                value = appName,
+                onValueChange = { appName = it },
+                label = { Text("App name") },
+                supportingText = { Text("Current: $curAppName") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
                 value = versionCode,
                 onValueChange = { versionCode = it.filter(Char::isDigit) },
                 label = { Text("Version code") },
@@ -146,7 +157,7 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                             try {
                                 val apk = DisguiseEngine.disguise(
                                     context,
-                                    DisguiseEngine.Params(pkg, versionName, vc, iconBytes)
+                                    DisguiseEngine.Params(pkg, appName, versionName, vc, iconBytes)
                                 )
                                 if (DisguiseEngine.installViaRoot(apk)) {
                                     apk.delete()
