@@ -381,18 +381,24 @@ private fun KernelFeaturesCard(
                 scope.launch(Dispatchers.IO) {
                     val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                     // Best effort: forwarded to ksud feature system; no-op where unsupported
-                    execKsud("feature disable_soter", true)
+                    if (checked) execKsud("feature disable_soter", true)
                     execKsud("feature save", true)
                     val packageCmd = if (checked) {
                         "pm disable-user --user 0 com.tencent.soter.soterserver || pm disable com.tencent.soter.soterserver"
                     } else {
                         "pm enable --user 0 com.tencent.soter.soterserver || pm enable com.tencent.soter.soterserver"
                     }
-                    createRootShell(true).use { shell ->
+                    val result = createRootShell(true).use { shell ->
                         shell.newJob().add(packageCmd).exec()
                     }
-                    prefsLocal.edit { putBoolean("disable_soter", checked) }
-                    isSoterDisabled = checked
+                    if (result.isSuccess) {
+                        prefsLocal.edit { putBoolean("disable_soter", checked) }
+                        isSoterDisabled = checked
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            snackBarHost.showSnackbar("Failed to update com.tencent.soter.soterserver state")
+                        }
+                    }
                 }
             }
 
