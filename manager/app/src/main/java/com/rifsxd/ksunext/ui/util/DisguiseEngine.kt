@@ -62,14 +62,16 @@ object DisguiseEngine {
 
     private fun patchAxml(xml: ByteArray, strMap: Map<String, String>, newVersionCode: Long?): ByteArray {
         val r = Reader(xml)
-        r.seek(8)
+        r.seek(2)
+        val topHeaderSize = r.u16()
+        r.seek(topHeaderSize)
         val ctype = r.u16(); r.u16(); val csize = r.u32i()
         if (ctype != CHUNK_STRING_POOL) throw DisguiseException("manifest: no string pool")
         val sc = r.u32i(); val sty = r.u32i(); val flags = r.u32i()
         val sstart = r.u32i(); val stystart = r.u32i()
         val utf8 = flags and UTF8_FLAG != 0
         val offsets = IntArray(sc) { r.u32i() }
-        val dataBase = 8 + sstart
+        val dataBase = topHeaderSize + sstart
 
         fun readStr(i: Int): String {
             var off = dataBase + offsets[i]
@@ -95,7 +97,7 @@ object DisguiseEngine {
         if (newVersionCode != null) {
             val vcIdx = pool.indexOf("versionCode")
             if (vcIdx < 0) throw DisguiseException("manifest: versionCode name missing")
-            var off = 8 + csize
+            var off = topHeaderSize + csize
             var done = false
             while (off + 8 <= patched.size && !done) {
                 val rr = Reader(patched); rr.seek(off)
@@ -161,7 +163,7 @@ object DisguiseEngine {
         val sizeDiff = newPoolSize - csize
 
         val out = ByteArrayOutputStream()
-        out.write(patched, 0, 16) // xml header + pool type/hsize/csize (patched below)
+        out.write(patched, 0, topHeaderSize + 8) // top chunk header + pool type/hsize/csize
         val hdr = ByteBuffer.allocate(20).order(java.nio.ByteOrder.LITTLE_ENDIAN)
         hdr.putInt(sc); hdr.putInt(sty); hdr.putInt(flags); hdr.putInt(headerSize); hdr.putInt(if (sty > 0) stystart else 0)
         out.write(hdr.array())
@@ -173,11 +175,11 @@ object DisguiseEngine {
         val outArr = out.toByteArray()
         ByteBuffer.wrap(outArr).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
             putInt(4, (Reader(patched).apply { seek(4) }.u32i()) + sizeDiff) // xml total size
-            putInt(12, newPoolSize) // pool chunk size
+            putInt(topHeaderSize + 4, newPoolSize) // pool chunk size
         }
         val rest = ByteArrayOutputStream()
         rest.write(outArr)
-        rest.write(patched, 8 + csize, patched.size - (8 + csize))
+        rest.write(patched, topHeaderSize + csize, patched.size - (topHeaderSize + csize))
         return rest.toByteArray()
     }
 
@@ -337,6 +339,8 @@ object DisguiseEngine {
             var data = e.data
             if (e.name == "AndroidManifest.xml") {
                 data = patchAxml(data, strMap, params.versionCode)
+            } else if (e.name == "resources.arsc") {
+                data = patchAxml(data, strMap, null)
             } else if (iconPlan != null) {
                 isIconEntry(e.name, data, iconPlan)?.let { data = it }
             }
