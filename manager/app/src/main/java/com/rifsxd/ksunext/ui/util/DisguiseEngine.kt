@@ -8,7 +8,6 @@ import android.graphics.Color
 import com.rifsxd.ksunext.signing.ApkSignerV2
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -196,55 +195,7 @@ object DisguiseEngine {
         val usize: Long, val lho: Long
     )
 
-    private fun readCentralDirectory(apk: ByteArray): Pair<List<Entry>, ByteArray> {
-        // find EOCD
-        var i = apk.size - 22
-        while (i >= 0 && !(apk[i] == 0x50.toByte() && apk[i + 1] == 0x4B.toByte() && apk[i + 2] == 0x05.toByte() && apk[i + 3] == 0x06.toByte())) i--
-        if (i < 0) throw DisguiseException("zip: EOCD not found")
-        val count = (apk[i + 10].toInt() and 0xFF) or ((apk[i + 11].toInt() and 0xFF) shl 8)
-        val cdOff = ByteBuffer.wrap(apk, i + 16, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
-        val list = ArrayList<Entry>(count)
-        var p = cdOff
-        repeat(count) {
-            val bb = ByteBuffer.wrap(apk, p, 46).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-            bb.int // sig
-            bb.short; bb.short; bb.short
-            val method = bb.short.toInt()
-            bb.short; bb.short
-            val crc = bb.int.toLong() and 0xFFFFFFFFL
-            val csize = bb.int.toLong() and 0xFFFFFFFFL
-            val usize = bb.int.toLong() and 0xFFFFFFFFL
-            val nlen = bb.short.toInt(); val elen = bb.short.toInt(); val clen = bb.short.toInt()
-            bb.short; bb.short; bb.int
-            val lho = bb.int.toLong() and 0xFFFFFFFFL
-            val name = String(apk, p + 46, nlen, Charsets.UTF_8)
-            list.add(Entry(name, method, crc, csize, usize, lho))
-            p += 46 + nlen + elen + clen
-        }
-        return list to apk
-    }
-
-    private fun rawData(apk: ByteArray, e: Entry): ByteArray {
-        val bb = ByteBuffer.wrap(apk, e.lho.toInt(), 30).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        bb.position(26)
-        val nlen = bb.short.toInt(); val elen = bb.short.toInt()
-        val start = e.lho.toInt() + 30 + nlen + elen
-        return apk.copyOfRange(start, start + e.csize.toInt())
-    }
-
-    private fun inflate(raw: ByteArray): ByteArray {
-        val inf = java.util.zip.Inflater(true)
-        inf.setInput(raw)
-        val out = ByteArrayOutputStream()
-        val buf = ByteArray(8192)
-        while (!inf.finished()) {
-            val n = inf.inflate(buf)
-            if (n == 0 && inf.needsInput()) break
-            out.write(buf, 0, n)
-        }
-        inf.end()
-        return out.toByteArray()
-    }
+    private class SrcEntry(val name: String, val method: Int, val data: ByteArray)
 
     private fun deflateRaw(data: ByteArray): ByteArray {
         val def = Deflater(9, true)
@@ -346,9 +297,21 @@ object DisguiseEngine {
 
     fun disguise(context: Context, params: Params): File {
         val selfApk = File(context.applicationInfo.sourceDir)
-        val apkBytes = selfApk.readBytes()
 
-        val (entries, _) = readCentralDirectory(apkBytes)
+        // Read via java.util.zip.ZipFile — the same battle-tested reader Android
+        // itself uses, immune to whatever layout the package manager produced
+        // when the APK was installed (hand-parsing local headers broke there).
+        val srcEntries = ArrayList<SrcEntry>()
+        java.util.zip.ZipFile(selfApk).use { zf ->
+            val en = zf.entries()
+            while (en.hasMoreElements()) {
+                val ze = en.nextElement()
+                if (ze.isDirectory) continue
+                val data = zf.getInputStream(ze).readBytes()
+                val method = if (ze.method == java.util.zip.ZipEntry.STORED) METHOD_STORED else METHOD_DEFLATED
+                srcEntries.add(SrcEntry(ze.name, method, data))
+            }
+        }
 
         // current identity (runtime -> also correct for spoofed builds)
         val pm = context.packageManager
@@ -362,12 +325,11 @@ object DisguiseEngine {
 
         val iconPlan = params.iconPng?.let { IconPlan(it) }
 
-        val out = ByteArrayOutputStream(apkBytes.size + 65536)
-        val central = ArrayList<Long>() // parallel to written entries: lho
+        val out = ByteArrayOutputStream(selfApk.length().toInt() + 65536)
         val written = ArrayList<Entry>()
 
-        for (e in entries) {
-            var data = if (e.method == METHOD_STORED) rawData(apkBytes, e) else inflate(rawData(apkBytes, e))
+        for (e in srcEntries) {
+            var data = e.data
             if (e.name == "AndroidManifest.xml") {
                 data = patchAxml(data, strMap, params.versionCode)
             } else if (iconPlan != null) {
@@ -399,7 +361,6 @@ object DisguiseEngine {
             lh.putShort(nameB.size.toShort()); lh.putShort(extra.size.toShort())
             out.write(lh.array()); out.write(nameB); out.write(extra); out.write(cdata)
             written.add(Entry(e.name, method, crc, cdata.size.toLong(), data.size.toLong(), lho))
-            central.add(lho)
         }
 
         val cdOff = out.size()
