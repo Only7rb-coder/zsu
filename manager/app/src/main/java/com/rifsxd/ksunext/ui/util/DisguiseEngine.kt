@@ -34,6 +34,7 @@ object DisguiseEngine {
 
     data class Params(
         val packageName: String,
+        val appName: String,
         val versionName: String,
         val versionCode: Long,
         val iconPng: ByteArray? // decoded user-picked image, null = keep current icon
@@ -318,9 +319,13 @@ object DisguiseEngine {
         val info = pm.getPackageInfo(context.packageName, 0)
         val curPkg = info.packageName
         @Suppress("DEPRECATION") val curVn = info.versionName ?: "15.0.000.2504111533"
+        val curAppName = pm.getApplicationLabel(context.applicationInfo)?.toString().orEmpty()
 
         val strMap = mutableMapOf<String, String>()
         if (params.packageName != curPkg) strMap[curPkg] = params.packageName
+        if (curAppName.isNotBlank() && params.appName.isNotBlank() && params.appName != curAppName) {
+            strMap[curAppName] = params.appName
+        }
         if (params.versionName.isNotBlank() && params.versionName != curVn) strMap[curVn] = params.versionName
 
         val iconPlan = params.iconPng?.let { IconPlan(it) }
