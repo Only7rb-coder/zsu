@@ -31,6 +31,7 @@ object DisguiseEngine {
     private const val CHUNK_START_TAG = 0x0102
     private const val CHUNK_END_DOC = 0x0003
     private const val UTF8_FLAG = 0x100
+    private const val TYPE_STRING = 0x03
 
     data class Params(
         val packageName: String,
@@ -60,7 +61,12 @@ object DisguiseEngine {
         fun seek(pos: Int) { p = pos }
     }
 
-    private fun patchAxml(xml: ByteArray, strMap: Map<String, String>, newVersionCode: Long?): ByteArray {
+    private fun patchAxml(
+        xml: ByteArray,
+        strMap: Map<String, String>,
+        newVersionCode: Long?,
+        forceAppLabel: String?
+    ): ByteArray {
         val r = Reader(xml)
         r.seek(8)
         val ctype = r.u16(); r.u16(); val csize = r.u32i()
@@ -126,16 +132,65 @@ object DisguiseEngine {
             if (!done) throw DisguiseException("manifest: <manifest> tag missing")
         }
 
+        // ---- force <application android:label="..."> as literal string ----
+        var forcedLabelIndex: Int? = null
+        if (!forceAppLabel.isNullOrBlank()) {
+            forcedLabelIndex = pool.indexOf(forceAppLabel)
+            if (forcedLabelIndex < 0) {
+                forcedLabelIndex = pool.size
+            }
+            val appLabelIndex = forcedLabelIndex
+            val appIdx = pool.indexOf("application")
+            val labelIdx = pool.indexOf("label")
+            if (appIdx >= 0 && labelIdx >= 0) {
+                var off = 8 + csize
+                while (off + 8 <= patched.size) {
+                    val rr = Reader(patched); rr.seek(off)
+                    val t = rr.u16(); rr.u16(); val cs = rr.u32i()
+                    if (t == CHUNK_END_DOC || cs <= 0) break
+                    if (t == CHUNK_START_TAG) {
+                        val nameIdx = Reader(patched).apply { seek(off + 20) }.u32i()
+                        if (nameIdx == appIdx) {
+                            val ah = Reader(patched).apply { seek(off + 24) }
+                            val astart = ah.u16()
+                            val asize = ah.u16()
+                            val acount = ah.u16()
+                            val abase = off + 16 + astart
+                            for (ai in 0 until acount) {
+                                val aoff = abase + ai * asize
+                                val aname = Reader(patched).apply { seek(aoff + 4) }.u32i()
+                                if (aname == labelIdx) {
+                                    putIntLe(patched, aoff + 8, appLabelIndex)
+                                    patched[aoff + 12] = 0x08
+                                    patched[aoff + 13] = 0x00
+                                    patched[aoff + 14] = 0x00
+                                    patched[aoff + 15] = TYPE_STRING.toByte()
+                                    putIntLe(patched, aoff + 16, appLabelIndex)
+                                    break
+                                }
+                            }
+                            break
+                        }
+                    }
+                    off += cs
+                }
+            }
+        }
+
         // ---- rebuild string pool with replacements ----
         val newPool = pool.map { s ->
             var ns = s
             strMap.forEach { (old, new) -> if (old.isNotEmpty() && ns.contains(old)) ns = ns.replace(old, new) }
             ns
+        }.toMutableList()
+        if (forcedLabelIndex != null && forceAppLabel != null && forcedLabelIndex >= newPool.size) {
+            newPool.add(forceAppLabel)
         }
+        val newSc = newPool.size
 
         val strData = ByteArrayOutputStream()
-        val newOffsets = IntArray(sc)
-        for (i in 0 until sc) {
+        val newOffsets = IntArray(newSc)
+        for (i in 0 until newSc) {
             newOffsets[i] = strData.size()
             if (utf8) {
                 val enc = newPool[i].toByteArray(Charsets.UTF_8)
@@ -156,16 +211,16 @@ object DisguiseEngine {
         }
         while (strData.size() % 4 != 0) strData.write(0)
 
-        val headerSize = 28 + sc * 4
+        val headerSize = 28 + newSc * 4
         val newPoolSize = headerSize + strData.size()
         val sizeDiff = newPoolSize - csize
 
         val out = ByteArrayOutputStream()
         out.write(patched, 0, 16) // xml header + pool type/hsize/csize (patched below)
         val hdr = ByteBuffer.allocate(20).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-        hdr.putInt(sc); hdr.putInt(sty); hdr.putInt(flags); hdr.putInt(headerSize); hdr.putInt(if (sty > 0) stystart else 0)
+        hdr.putInt(newSc); hdr.putInt(sty); hdr.putInt(flags); hdr.putInt(headerSize); hdr.putInt(if (sty > 0) stystart else 0)
         out.write(hdr.array())
-        val offBuf = ByteBuffer.allocate(sc * 4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val offBuf = ByteBuffer.allocate(newSc * 4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
         newOffsets.forEach { offBuf.putInt(it) }
         out.write(offBuf.array())
         out.write(strData.toByteArray())
@@ -185,6 +240,13 @@ object DisguiseEngine {
         if (v > 0x7F) {
             os.write((v ushr 8) or 0x80); os.write(v and 0xFF)
         } else os.write(v)
+    }
+
+    private fun putIntLe(b: ByteArray, off: Int, v: Int) {
+        b[off] = (v and 0xFF).toByte()
+        b[off + 1] = ((v ushr 8) and 0xFF).toByte()
+        b[off + 2] = ((v ushr 16) and 0xFF).toByte()
+        b[off + 3] = ((v ushr 24) and 0xFF).toByte()
     }
 
     // ---------------------------------------------------------------------
@@ -336,7 +398,7 @@ object DisguiseEngine {
         for (e in srcEntries) {
             var data = e.data
             if (e.name == "AndroidManifest.xml") {
-                data = patchAxml(data, strMap, params.versionCode)
+                data = patchAxml(data, strMap, params.versionCode, params.appName)
             } else if (iconPlan != null) {
                 isIconEntry(e.name, data, iconPlan)?.let { data = it }
             }
