@@ -22,7 +22,7 @@ find . -depth -type d -name 'ksunext' -execdir mv {} "$word3" \;
 # Replace inside files (zsu fork: also randomize the pinned applicationId)
 find . -type f -exec sed -i \
     -e "s/com\.rifsxd\.ksunext/$word1.$word2.$word3/g" \
-    -e "s/com\.zte\.mifavor\.variablewidget/$word1.$word2.$word3/g" \
+    -e "s/com\.zsu\.zsu/$word1.$word2.$word3/g" \
     -e "s/com\/rifsxd\/ksunext/$word1\/$word2\/$word3/g" \
     -e "s/com_rifsxd_ksunext/${word1}_${word2}_${word3}/g" {} +
 

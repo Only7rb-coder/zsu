@@ -27,7 +27,7 @@ android {
 
     defaultConfig {
         // zsu private fork: unique app identity (GUI/code stays identical)
-        applicationId = "com.zte.mifavor.variablewidget"
+        applicationId = "com.zsu.zsu"
     }
 
     buildTypes {

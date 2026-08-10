@@ -367,6 +367,27 @@ private fun KernelFeaturesCard(
                 }
             }
 
+            var isSoterDisabled by rememberSaveable {
+                mutableStateOf(prefs.getBoolean("disable_soter", false))
+            }
+            SwitchItem(
+                icon = Icons.Filled.PhonelinkErase,
+                title = "Disable Soter",
+                summary = "Disable Soter attestation (best effort — requires kernel/ROM support)",
+                checked = isSoterDisabled,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { checked ->
+                scope.launch(Dispatchers.IO) {
+                    val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    // Best effort: forwarded to ksud feature system; no-op where unsupported
+                    execKsud("feature disable_soter", true)
+                    execKsud("feature save", true)
+                    prefsLocal.edit { putBoolean("disable_soter", checked) }
+                    isSoterDisabled = checked
+                }
+            }
+
             var isAvcSpoofEnabled by rememberSaveable {
                 mutableStateOf(Natives.isAvcSpoofEnabled())
             }

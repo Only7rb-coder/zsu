@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ZSU emblem: hexagonal shield ring with a bold Z bolt -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M54,22 L81.5,38 L81.5,70 L54,86 L26.5,70 L26.5,38 Z M54,30.5 L74.8,42.5 L74.8,65.5 L54,77.5 L33.2,65.5 L33.2,42.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,38 L66,38 L52,60 L66,60 L66,67 L41,67 L55,45 L41,45 Z" />
+</vector>
