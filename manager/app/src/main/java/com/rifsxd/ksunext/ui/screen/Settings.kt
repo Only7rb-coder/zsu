@@ -72,18 +72,14 @@ import java.time.format.DateTimeFormatter
 fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
-
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
-
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
     val scrollState = LocalScrollState.current
     val isNavBarHidden = scrollState?.isScrollingDown?.value ?: false
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
-
     val bottomBarScrollState = LocalScrollState.current
     val bottomBarScrollConnection = if (bottomBarScrollState != null) {
         rememberScrollConnection(
@@ -129,7 +125,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
         sulogStatus = getFeatureStatus("sulog")
         isSulogEnabled = getFeaturePersistValue("sulog") == 1L
         adbRootStatus = getFeatureStatus("adb_root")
-
         selinuxHideStatus = getFeatureStatus("selinux_hide")
         avcSpoofStatus = getFeatureStatus("avc_spoof")
     }
@@ -169,8 +164,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     adbRootStatus = adbRootStatus,
                     selinuxHideStatus = selinuxHideStatus,
                     avcSpoofStatus = avcSpoofStatus,
-                    scope = scope
+                    scope = scope,
+                    snackBarHost = snackBarHost
                 )
+
                 SecurityCard(
                     navigator = navigator,
                     loadingDialog = loadingDialog
@@ -202,7 +199,8 @@ private fun KernelFeaturesCard(
     adbRootStatus: String,
     selinuxHideStatus: String,
     avcSpoofStatus: String,
-    scope: kotlinx.coroutines.CoroutineScope
+    scope: kotlinx.coroutines.CoroutineScope,
+    snackBarHost: SnackbarHostState
 ) {
     val context = LocalContext.current
     val suCompatSupported = suCompatStatus == "supported"
@@ -220,7 +218,6 @@ private fun KernelFeaturesCard(
             var umountChecked by rememberSaveable {
                 mutableStateOf(Natives.isDefaultUmountModules())
             }
-
             SwitchItem(
                 icon = Icons.Filled.FolderDelete,
                 title = stringResource(R.string.settings_umount_modules_default),
@@ -381,18 +378,24 @@ private fun KernelFeaturesCard(
                 scope.launch(Dispatchers.IO) {
                     val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                     // Best effort: forwarded to ksud feature system; no-op where unsupported
-                    execKsud("feature disable_soter", true)
+                    if (checked) execKsud("feature disable_soter", true)
                     execKsud("feature save", true)
                     val packageCmd = if (checked) {
                         "pm disable-user --user 0 com.tencent.soter.soterserver || pm disable com.tencent.soter.soterserver"
                     } else {
                         "pm enable --user 0 com.tencent.soter.soterserver || pm enable com.tencent.soter.soterserver"
                     }
-                    createRootShell(true).use { shell ->
+                    val result = createRootShell(true).use { shell ->
                         shell.newJob().add(packageCmd).exec()
                     }
-                    prefsLocal.edit { putBoolean("disable_soter", checked) }
-                    isSoterDisabled = checked
+                    if (result.isSuccess) {
+                        prefsLocal.edit { putBoolean("disable_soter", checked) }
+                        isSoterDisabled = checked
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            snackBarHost.showSnackbar("Failed to update com.tencent.soter.soterserver state")
+                        }
+                    }
                 }
             }
 
@@ -436,7 +439,6 @@ private fun SecurityCard(
             var isSelinuxPermissive by rememberSaveable {
                 mutableStateOf(getSelinuxEnforce() == false)
             }
-
             SwitchItem(
                 icon = Icons.Filled.Security,
                 title = stringResource(R.string.set_selinux),
@@ -531,7 +533,6 @@ private fun AppSettingsCard(
             var checkUpdate by rememberSaveable {
                 mutableStateOf(prefs.getBoolean("check_update", true))
             }
-
             SwitchItem(
                 icon = Icons.Filled.Update,
                 title = stringResource(R.string.settings_check_update),
@@ -584,7 +585,6 @@ private fun AppSettingsCard(
             )
 
             var showBottomsheet by remember { mutableStateOf(false) }
-
             ListItem(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -755,6 +755,7 @@ fun UninstallItem(
             }
         }
     }
+
     val uninstall = stringResource(id = R.string.settings_uninstall)
     ListItem(
         modifier = modifier.clickable { uninstallDialog.show() },
@@ -805,7 +806,6 @@ fun rememberUninstallDialog(onSelected: (UninstallType) -> Unit): DialogHandle {
                 icon = IconSource(it.icon)
             )
         }
-
         var selection = UninstallType.NONE
         ListDialog(
             state = rememberUseCaseState(visible = true, onFinishedRequest = {
