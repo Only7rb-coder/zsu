@@ -58,12 +58,28 @@ private val HIDE_UNLOCKED_MODULES = listOf(
     }
 )
 
+private val HIDE_UNLOCKED_MODULES_2 = listOf(
+    ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
+        it.endsWith(".zip") && it.contains("release")
+    },
+    ModuleSpec(
+        "TEESimulator-RS v6.0.1-307",
+        "Enginex0/TEESimulator-RS",
+        preferredTag = "v6.0.1-307"
+    ) {
+        it == "TEESimulator-RS-v6.0.1-307-Release.zip"
+    },
+    ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true, preferredTag = "v5.0-beta.4") {
+        it.endsWith(".zip")
+    },
+    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
+        it.endsWith(".zip") && it.contains("ZYGISK") && it.contains("release")
+    }
+)
+
 private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
     it.endsWith(".zip")
 }
-
-private const val HIDE_UNLOCKED_DEVICES_2_URL =
-    "https://github.com/Enginex0/TEESimulator-RS/releases/download/v6.0.1-307/TEESimulator-RS-v6.0.1-307-Release.zip"
 
 private object AddonInstaller {
     private fun findAsset(rel: JSONObject, spec: ModuleSpec): Pair<String, String>? {
@@ -250,36 +266,13 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
 
             Button(
                 onClick = dropUnlessResumed {
-                    if (busy) return@dropUnlessResumed
-                    scope.launch {
-                        busy = true
-                        log = ""
-                        loadingDialog.show()
-                        var failed = false
-                        withContext(Dispatchers.IO) {
-                            try {
-                                appendLog("» Hide for unlocked bootloader devices 2: downloading…")
-                                val zip = File(ksuApp.cacheDir, "addon_TEESimulator-RS.zip")
-                                AddonInstaller.download(HIDE_UNLOCKED_DEVICES_2_URL, zip)
-                                appendLog("  installing…")
-                                val ok = AddonInstaller.flashModuleZip(zip) { appendLog("  $it") }
-                                zip.delete()
-                                if (ok) appendLog("✓ Hide for unlocked bootloader devices 2 installed")
-                                else {
-                                    failed = true
-                                    appendLog("✗ Hide for unlocked bootloader devices 2 install FAILED")
-                                }
-                            } catch (e: Exception) {
-                                failed = true
-                                appendLog("✗ Hide for unlocked bootloader devices 2: ${e.message}")
-                            }
+                    runInstall("Hide bundle 2", HIDE_UNLOCKED_MODULES_2) {
+                        appendLog("» Tricky Addon: selecting ALL apps in target.txt…")
+                        if (AddonInstaller.selectAllAppsInTrickyTarget { appendLog("  $it") }) {
+                            appendLog("✓ target.txt updated")
+                        } else {
+                            appendLog("✗ target.txt update failed (Tricky Store missing?)")
                         }
-                        loadingDialog.hide()
-                        busy = false
-                        snackBarHost.showSnackbar(
-                            if (failed) "Hide for unlocked bootloader devices 2 failed — see log"
-                            else "Hide for unlocked bootloader devices 2: done"
-                        )
                     }
                 },
                 enabled = !busy,
