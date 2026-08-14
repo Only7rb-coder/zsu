@@ -73,7 +73,7 @@ android {
     applicationVariants.all {
         outputs.forEach {
             val output = it as BaseVariantOutputImpl
-            output.outputFileName = "Custom_widgets_${managerVersionName}_${managerVersionCode}-$name.apk"
+            output.outputFileName = "ZSU_${managerVersionName}_${managerVersionCode}-$name.apk"
         }
         kotlin.sourceSets {
             getByName(name) {
