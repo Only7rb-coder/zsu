@@ -546,6 +546,35 @@ private fun AppSettingsCard(
                 checkUpdate = it
             }
 
+            var resetPropsRunning by rememberSaveable { mutableStateOf(false) }
+            SwitchItem(
+                icon = Icons.Filled.Refresh,
+                title = stringResource(R.string.settings_reset_props),
+                summary = if (resetPropsRunning) {
+                    stringResource(R.string.settings_reset_props_running)
+                } else {
+                    stringResource(R.string.settings_reset_props_summary)
+                },
+                checked = resetPropsRunning,
+                enabled = !resetPropsRunning,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { enabled ->
+                if (enabled && !resetPropsRunning) {
+                    resetPropsRunning = true
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) { ResetProps.run() }
+                        resetPropsRunning = false
+                        val message = if (result.success) {
+                            context.getString(R.string.settings_reset_props_success, result.changed)
+                        } else {
+                            context.getString(R.string.settings_reset_props_failed)
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+
             AppliedDpiItem(
                 prefs = prefs,
                 context = context,
