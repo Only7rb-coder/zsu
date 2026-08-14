@@ -62,6 +62,9 @@ private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
     it.endsWith(".zip")
 }
 
+private const val HIDE_UNLOCKED_DEVICES_2_URL =
+    "https://github.com/Enginex0/TEESimulator-RS/releases/download/v6.0.1-307/TEESimulator-RS-v6.0.1-307-Release.zip"
+
 private object AddonInstaller {
     private fun findAsset(rel: JSONObject, spec: ModuleSpec): Pair<String, String>? {
         val assets = rel.getJSONArray("assets")
@@ -189,7 +192,10 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                         appendLog("» ${spec.label}: resolving latest ${if (spec.beta) "beta " else ""}release…")
                         val (url, tag) = AddonInstaller.resolveLatest(spec)
                         appendLog("  ${spec.label} $tag — downloading…")
-                        val zip = File(ksuApp.cacheDir, "addon_${spec.repo.substringAfter('/')}.zip")
+                        val zip = File(
+                            ksuApp.cacheDir,
+                            "addon_${spec.label.replace(Regex("[^A-Za-z0-9._-]"), "_")}.zip"
+                        )
                         AddonInstaller.download(url, zip)
                         appendLog("  installing…")
                         val ok = AddonInstaller.flashModuleZip(zip) { appendLog("  $it") }
@@ -240,7 +246,45 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Hide for unlocked bootloader devices") }
+            ) { Text("Hide for unlocked bootloader devices 1") }
+
+            Button(
+                onClick = dropUnlessResumed {
+                    if (busy) return@dropUnlessResumed
+                    scope.launch {
+                        busy = true
+                        log = ""
+                        loadingDialog.show()
+                        var failed = false
+                        withContext(Dispatchers.IO) {
+                            try {
+                                appendLog("» Hide for unlocked bootloader devices 2: downloading…")
+                                val zip = File(ksuApp.cacheDir, "addon_TEESimulator-RS.zip")
+                                AddonInstaller.download(HIDE_UNLOCKED_DEVICES_2_URL, zip)
+                                appendLog("  installing…")
+                                val ok = AddonInstaller.flashModuleZip(zip) { appendLog("  $it") }
+                                zip.delete()
+                                if (ok) appendLog("✓ Hide for unlocked bootloader devices 2 installed")
+                                else {
+                                    failed = true
+                                    appendLog("✗ Hide for unlocked bootloader devices 2 install FAILED")
+                                }
+                            } catch (e: Exception) {
+                                failed = true
+                                appendLog("✗ Hide for unlocked bootloader devices 2: ${e.message}")
+                            }
+                        }
+                        loadingDialog.hide()
+                        busy = false
+                        snackBarHost.showSnackbar(
+                            if (failed) "Hide for unlocked bootloader devices 2 failed — see log"
+                            else "Hide for unlocked bootloader devices 2: done"
+                        )
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Hide for unlocked bootloader devices 2") }
 
             Button(
                 onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) },
