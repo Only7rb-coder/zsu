@@ -2,6 +2,7 @@ package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.net.Uri
 import android.system.OsConstants
 import android.widget.Toast
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 /**
  * @author weishu
@@ -544,6 +546,12 @@ private fun AppSettingsCard(
                 checkUpdate = it
             }
 
+            AppliedDpiItem(
+                prefs = prefs,
+                context = context,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+            )
+
             ListItem(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -651,6 +659,100 @@ private fun AppSettingsCard(
                     )
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun AppliedDpiItem(
+    prefs: android.content.SharedPreferences,
+    context: android.content.Context,
+    modifier: Modifier = Modifier
+) {
+    val systemDpi = remember { Resources.getSystem().displayMetrics.densityDpi.coerceIn(120, 640) }
+    var dpi by rememberSaveable {
+        mutableIntStateOf(
+            (AppDensity.configuredDpi(context) ?: AppDensity.currentDpi(context))
+                .coerceIn(120, 640)
+        )
+    }
+
+    val smallDpi = (systemDpi * 0.75f).roundToInt().coerceIn(120, 640)
+    val mediumDpi = systemDpi
+    val bigDpi = (systemDpi * 1.25f).roundToInt().coerceIn(120, 640)
+    val oversizeDpi = (systemDpi * 1.5f).roundToInt().coerceIn(120, 640)
+    val presetLabels = listOf(
+        stringResource(R.string.settings_dpi_small),
+        stringResource(R.string.settings_dpi_medium),
+        stringResource(R.string.settings_dpi_big),
+        stringResource(R.string.settings_dpi_oversize)
+    )
+
+    Column(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.FormatSize, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_applied_dpi),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.settings_applied_dpi_summary),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        Slider(
+            value = dpi.toFloat(),
+            onValueChange = { dpi = it.roundToInt() },
+            valueRange = 120f..640f,
+            steps = 519,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            presetLabels.forEach { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.settings_dpi_customizable, dpi),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Button(
+            onClick = {
+                prefs.edit { putInt(AppDensity.PREF_KEY, dpi) }
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_dpi_applied),
+                    Toast.LENGTH_SHORT
+                ).show()
+                refreshActivity(context)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.Check, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.settings_dpi_apply))
         }
     }
 }
