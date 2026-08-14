@@ -154,6 +154,7 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     var searchText by remember { mutableStateOf("") }
     var moduleState by remember { mutableStateOf<ModuleRepoState>(ModuleRepoState.Loading) }
     var downloadingModuleName by remember { mutableStateOf<String?>(null) }
+    var downloadingModuleId by remember { mutableStateOf<Long?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var sortAToZ by remember { mutableStateOf(prefs.getBoolean("module_sort_a_to_z", true)) }
@@ -161,13 +162,25 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     var sortStarsLowToHigh by remember { mutableStateOf(prefs.getBoolean("module_sort_stars_low_to_high", false)) }
     var sortStarsHighToLow by remember { mutableStateOf(prefs.getBoolean("module_sort_stars_high_to_low", false)) }
 
-    DownloadListener(context) { uri ->
-        downloadedUri = uri
-        downloadingModuleName = null
-        navigator.navigate(
-            FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
-        )
-    }
+    DownloadListener(
+        context = context,
+        downloadId = downloadingModuleId,
+        onDownloaded = { uri ->
+            downloadedUri = uri
+            downloadingModuleId = null
+            downloadingModuleName = null
+            navigator.navigate(
+                FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
+            )
+        },
+        onFailed = { reason ->
+            downloadingModuleId = null
+            downloadingModuleName = null
+            scope.launch {
+                snackBarHost.showSnackbar("Module download failed (code $reason)")
+            }
+        }
+    )
 
     suspend fun fetchModuleReposFromJson(jsonUrl: String): List<ModuleRepo> {
         return withContext(Dispatchers.IO) {
@@ -646,14 +659,34 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                                     scope.launch {
                                         try {
                                             val fileName = "${selectedModule.name.replace(" ", "_")}_${selectedModule.latestVersion.replace("/", "_")}.zip"
-                                            download(
-                                                context,
-                                                selectedModule.downloadUrl,
-                                                fileName,
-                                                "Downloading ${selectedModule.name}"
+                                            val id = download(
+                                                context = context,
+                                                url = selectedModule.downloadUrl,
+                                                fileName = fileName,
+                                                description = "Downloading ${selectedModule.name}",
+                                                onDownloaded = { uri ->
+                                                    scope.launch {
+                                                        downloadedUri = uri
+                                                        downloadingModuleId = null
+                                                        downloadingModuleName = null
+                                                        navigator.navigate(
+                                                            FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
+                                                        )
+                                                    }
+                                                },
+                                                onDownloading = {},
+                                                onFailed = { reason ->
+                                                    scope.launch {
+                                                        downloadingModuleId = null
+                                                        downloadingModuleName = null
+                                                        snackBarHost.showSnackbar("Module download failed (code $reason)")
+                                                    }
+                                                }
                                             )
+                                            downloadingModuleId = id
                                         } catch (e: Exception) {
                                             snackBarHost.showSnackbar("Error downloading module: ${e.message}")
+                                            downloadingModuleId = null
                                             downloadingModuleName = null
                                         }
                                     }
