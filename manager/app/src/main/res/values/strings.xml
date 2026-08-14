@@ -216,8 +216,10 @@
     <string name="settings_applied_dpi">Applied DPI</string>
     <string name="settings_reset_props">Reset Props</string>
     <string name="settings_reset_props_summary">Apply Sensitive Props cleanup directly through KernelSU root; no module required</string>
+    <string name="settings_reset_props_enabled_summary">Enabled: apply now and automatically reapply after every reboot</string>
     <string name="settings_reset_props_running">Resetting properties…</string>
-    <string name="settings_reset_props_success">Reset Props completed: %d properties changed</string>
+    <string name="settings_reset_props_success">Reset Props completed: %1$d properties changed, %2$d failed</string>
+    <string name="settings_reset_props_no_changes">Reset Props completed: all targeted properties already matched</string>
     <string name="settings_reset_props_failed">Reset Props failed: root access or resetprop is unavailable</string>
     <string name="settings_applied_dpi_summary">Adjust the screen display density for the current application only</string>
     <string name="settings_dpi_small">Small</string>
