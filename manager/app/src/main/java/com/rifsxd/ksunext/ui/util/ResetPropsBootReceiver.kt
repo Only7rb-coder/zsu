@@ -20,7 +20,8 @@ class ResetPropsBootReceiver : BroadcastReceiver() {
                 Log.i(
                     TAG,
                     "Boot Reset Props finished: success=${result.success}, " +
-                        "changed=${result.changed}, failed=${result.failed}"
+                        "changed=${result.changed}, failed=${result.failed}, " +
+                        "diagnostic=${result.diagnostic}"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Boot Reset Props failed", e)

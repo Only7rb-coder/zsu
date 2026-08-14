@@ -1,7 +1,9 @@
 package com.rifsxd.ksunext.ui.util
 
 import com.topjohnwu.superuser.CallbackList
+import java.io.File
 import java.util.ArrayList
+import com.rifsxd.ksunext.ksuApp
 
 /**
  * Standalone implementation of the deterministic runtime behavior from the
@@ -15,20 +17,28 @@ object ResetProps {
         val success: Boolean,
         val changed: Int,
         val failed: Int,
-        val output: List<String>
+        val output: List<String>,
+        val diagnostic: String = ""
     )
 
     private val script = """
         set -u
-        RP="${'$'}(for candidate in /data/adb/ksu/bin/resetprop /sbin/resetprop /data/adb/magisk/resetprop; do
-            if [ -x "${'$'}candidate" ]; then printf '%s' "${'$'}candidate"; break; fi
-        done)"
-        if [ -z "${'$'}RP" ]; then RP="${'$'}(command -v resetprop 2>/dev/null || true)"; fi
-        if [ -z "${'$'}RP" ]; then
-            echo "resetprop is not available in the KernelSU root environment"
-            exit 127
+        DAEMON="__ZSU_KSUD__"
+        if [ -x "${'$'}DAEMON" ]; then
+            run_resetprop() { "${'$'}DAEMON" resetprop "${'$'}@"; }
+            echo "Using KernelSU daemon resetprop: ${'$'}DAEMON"
+        else
+            RP="${'$'}(for candidate in /data/adb/ksu/bin/resetprop /sbin/resetprop /data/adb/magisk/resetprop; do
+                if [ -x "${'$'}candidate" ]; then printf '%s' "${'$'}candidate"; break; fi
+            done)"
+            if [ -z "${'$'}RP" ]; then RP="${'$'}(command -v resetprop 2>/dev/null || true)"; fi
+            if [ -z "${'$'}RP" ]; then
+                echo "ERROR: resetprop is not available in the KernelSU root environment"
+                exit 127
+            fi
+            run_resetprop() { "${'$'}RP" "${'$'}@"; }
+            echo "Using resetprop binary: ${'$'}RP"
         fi
-        echo "Using resetprop: ${'$'}RP"
 
         changed=0
         failed=0
@@ -45,8 +55,8 @@ object ResetProps {
             [ "${'$'}before" = "${'$'}value" ] && return 0
 
             if case "${'$'}name" in
-                persist.*) "${'$'}RP" -n -p "${'$'}name" "${'$'}value" >/dev/null 2>&1 ;;
-                *) "${'$'}RP" -n "${'$'}name" "${'$'}value" >/dev/null 2>&1 ;;
+                persist.*) run_resetprop -n -p "${'$'}name" "${'$'}value" >/dev/null 2>&1 ;;
+                *) run_resetprop -n "${'$'}name" "${'$'}value" >/dev/null 2>&1 ;;
             esac
             then
                 after="${'$'}(read_prop "${'$'}name")"
@@ -66,7 +76,7 @@ object ResetProps {
             name="${'$'}1"
             before="${'$'}(read_prop "${'$'}name")"
             [ -z "${'$'}before" ] && return 0
-            if "${'$'}RP" -n -d "${'$'}name" >/dev/null 2>&1 && [ -z "${'$'}(read_prop "${'$'}name")" ]; then
+            if run_resetprop -n -d "${'$'}name" >/dev/null 2>&1 && [ -z "${'$'}(read_prop "${'$'}name")" ]; then
                 changed=${'$'}((changed + 1))
             else
                 failed=${'$'}((failed + 1))
@@ -182,8 +192,10 @@ object ResetProps {
             }
         }
         return try {
+            val daemonPath = File(ksuApp.applicationInfo.nativeLibraryDir, "libksud.so").absolutePath
+            val scriptForExecution = script.replace("__ZSU_KSUD__", daemonPath)
             val result = createRootShell(true).use { shell ->
-                shell.newJob().add("sh -c ${'$'}{shellQuote(script)}").to(callback, callback).exec()
+                shell.newJob().add("sh -c ${'$'}{shellQuote(scriptForExecution)}").to(callback, callback).exec()
             }
             val summary = output.firstOrNull { it.startsWith("Reset Props completed:") }
             val changed = summary
@@ -198,9 +210,16 @@ object ResetProps {
                 ?.trim()
                 ?.toIntOrNull()
                 ?: if (result.isSuccess) 0 else 1
-            Result(result.isSuccess && failed == 0, changed, failed, output.toList())
+            val diagnostic = output.lastOrNull {
+                it.startsWith("ERROR:") ||
+                    it.startsWith("Write failed:") ||
+                    it.startsWith("Verification failed:") ||
+                    it.startsWith("resetprop:")
+            }.orEmpty()
+            Result(result.isSuccess && failed == 0, changed, failed, output.toList(), diagnostic)
         } catch (e: Exception) {
-            Result(false, 0, 1, output + (e.message ?: "Reset Props failed"))
+            val diagnostic = e.message ?: "Reset Props failed"
+            Result(false, 0, 1, output + diagnostic, diagnostic)
         }
     }
 
