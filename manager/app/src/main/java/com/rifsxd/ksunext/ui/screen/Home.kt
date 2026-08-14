@@ -87,6 +87,7 @@ import com.rifsxd.ksunext.ui.rememberScrollConnection
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -411,6 +412,30 @@ fun UpdateCard() {
     val latestVersionInfo = LatestVersionInfo()
     
     var preferSpoofed by remember { mutableStateOf(false) }
+    var updateDownloadId by remember { mutableStateOf<Long?>(null) }
+    val updateScope = rememberCoroutineScope()
+
+    DownloadListener(
+        context = context,
+        downloadId = updateDownloadId,
+        onDownloaded = { uri ->
+            updateScope.launch(Dispatchers.IO) {
+                val installed = installDownloadedApk(context, uri)
+                withContext(Dispatchers.Main) {
+                    updateDownloadId = null
+                    Toast.makeText(
+                        context,
+                        if (installed) "ZSU update installed" else "ZSU update install failed",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        },
+        onFailed = {
+            updateDownloadId = null
+            Toast.makeText(context, "ZSU update download failed", Toast.LENGTH_LONG).show()
+        }
+    )
     
     val newVersion by produceState(initialValue = latestVersionInfo, key1 = preferSpoofed) {
         value = withContext(Dispatchers.IO) {
@@ -433,12 +458,59 @@ fun UpdateCard() {
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut()
     ) {
-        val updateDialog = rememberConfirmDialog(onConfirm = { safeOpenUri(zsuLinkContext, newVersionUrl) })
+        val updateDialog = rememberConfirmDialog(onConfirm = {
+            updateScope.launch {
+                try {
+                    val fileName = "ZSU-update-${newVersion.versionCode}.apk"
+                    val id = withContext(Dispatchers.IO) {
+                        download(
+                            context = context,
+                            url = newVersionUrl,
+                            fileName = fileName,
+                            description = "Downloading ZSU update",
+                            onDownloading = {
+                                Toast.makeText(context, "Downloading ZSU update…", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailed = {
+                                Toast.makeText(context, "ZSU update download failed", Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
+                    updateDownloadId = id
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        context,
+                        "ZSU update download failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        })
         ElevatedCard(
             modifier = Modifier.clickable {
-                if (changelog.isEmpty()) {
-                    safeOpenUri(zsuLinkContext, newVersionUrl)
-                } else {
+                    if (changelog.isEmpty()) {
+                        updateScope.launch {
+                            try {
+                                val id = withContext(Dispatchers.IO) {
+                                    download(
+                                        context = context,
+                                        url = newVersionUrl,
+                                        fileName = "ZSU-update-${newVersion.versionCode}.apk",
+                                        description = "Downloading ZSU update",
+                                        onDownloading = {
+                                            Toast.makeText(context, "Downloading ZSU update…", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onFailed = {
+                                            Toast.makeText(context, "ZSU update download failed", Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                }
+                                updateDownloadId = id
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "ZSU update download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
                     updateDialog.showConfirm(
                         title = title,
                         content = changelog,

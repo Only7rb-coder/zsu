@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
+import java.io.File
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.core.content.ContextCompat
@@ -80,6 +81,20 @@ fun download(
     return downloadManager.enqueue(request)
 }
 
+fun installDownloadedApk(context: Context, uri: Uri): Boolean {
+    val apk = File(context.cacheDir, "zsu-manager-update.apk")
+    return try {
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            apk.outputStream().use { output -> input.copyTo(output) }
+        } ?: return false
+        DisguiseEngine.installViaRoot(apk)
+    } catch (_: Exception) {
+        false
+    } finally {
+        apk.delete()
+    }
+}
+
 fun checkNewVersion(preferSpoofed: Boolean? = null): LatestVersionInfo {
     // Next version updates
     val url = "https://api.github.com/repos/Only7rb-coder/zsu/releases/latest"
@@ -107,8 +122,10 @@ fun checkNewVersion(preferSpoofed: Boolean? = null): LatestVersionInfo {
                     val isApk = name.endsWith(".apk")
                     if (!isApk) continue
 
-                    val regex = Regex("v(.+?)_(\\d+)-")
-                    val matchResult = regex.find(name) ?: continue
+                    // ZSU release assets are named ZSU_<versionName>_<versionCode>-release.apk.
+                    // The spoofed release asset may have an additional -spoofed suffix.
+                    val regex = Regex("^ZSU_(.+?)_(\\d+)-release(?:-spoofed)?\\.apk$")
+                    val matchResult = regex.matchEntire(name) ?: continue
                     val versionName = matchResult.groupValues[1]
                     val versionCode = matchResult.groupValues[2]
                     val downloadUrl = asset.getString("browser_download_url")
