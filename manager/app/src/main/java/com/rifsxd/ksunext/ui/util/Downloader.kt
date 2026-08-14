@@ -26,25 +26,42 @@ fun download(
     fileName: String,
     description: String,
     onDownloaded: (Uri) -> Unit = {},
-    onDownloading: () -> Unit = {}
-) {
+    onDownloading: () -> Unit = {},
+    onFailed: (Int) -> Unit = {}
+): Long {
     val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
     val query = DownloadManager.Query()
-    query.setFilterByStatus(DownloadManager.STATUS_RUNNING or DownloadManager.STATUS_PAUSED or DownloadManager.STATUS_PENDING)
+    query.setFilterByStatus(
+        DownloadManager.STATUS_RUNNING or
+            DownloadManager.STATUS_PAUSED or
+            DownloadManager.STATUS_PENDING or
+            DownloadManager.STATUS_SUCCESSFUL or
+            DownloadManager.STATUS_FAILED
+    )
     downloadManager.query(query).use { cursor ->
         while (cursor.moveToNext()) {
-            val uri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_URI))
+            val id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
+            val uri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI))
             val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            val columnTitle = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_TITLE))
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            val columnTitle = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
             if (url == uri || fileName == columnTitle) {
-                if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
-                    onDownloading()
-                    return
-                } else if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    onDownloaded(localUri.toUri())
-                    return
+                when (status) {
+                    DownloadManager.STATUS_RUNNING,
+                    DownloadManager.STATUS_PENDING,
+                    DownloadManager.STATUS_PAUSED -> {
+                        onDownloading()
+                        return id
+                    }
+                    DownloadManager.STATUS_SUCCESSFUL -> {
+                        if (!localUri.isNullOrBlank()) onDownloaded(localUri.toUri())
+                        return id
+                    }
+                    DownloadManager.STATUS_FAILED -> {
+                        onFailed(cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)))
+                        return id
+                    }
                 }
             }
         }
@@ -60,7 +77,7 @@ fun download(
         .setTitle(fileName)
         .setDescription(description)
 
-    downloadManager.enqueue(request)
+    return downloadManager.enqueue(request)
 }
 
 fun checkNewVersion(preferSpoofed: Boolean? = null): LatestVersionInfo {
@@ -128,8 +145,13 @@ fun checkNewVersion(preferSpoofed: Boolean? = null): LatestVersionInfo {
 }
 
 @Composable
-fun DownloadListener(context: Context, onDownloaded: (Uri) -> Unit) {
-    DisposableEffect(context) {
+fun DownloadListener(
+    context: Context,
+    onDownloaded: (Uri) -> Unit,
+    downloadId: Long? = null,
+    onFailed: (Int) -> Unit = {}
+) {
+    DisposableEffect(context, downloadId) {
         val receiver = object : BroadcastReceiver() {
             @SuppressLint("Range")
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -137,6 +159,7 @@ fun DownloadListener(context: Context, onDownloaded: (Uri) -> Unit) {
                     val id = intent.getLongExtra(
                         DownloadManager.EXTRA_DOWNLOAD_ID, -1
                     )
+                    if (downloadId != null && id != downloadId) return
                     val query = DownloadManager.Query().setFilterById(id)
                     val downloadManager =
                         context?.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -145,11 +168,16 @@ fun DownloadListener(context: Context, onDownloaded: (Uri) -> Unit) {
                         val status = cursor.getInt(
                             cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         )
-                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            val uri = cursor.getString(
-                                cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
-                            )
-                            onDownloaded(uri.toUri())
+                        when (status) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                val uri = cursor.getString(
+                                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)
+                                )
+                                if (!uri.isNullOrBlank()) onDownloaded(uri.toUri())
+                            }
+                            DownloadManager.STATUS_FAILED -> {
+                                onFailed(cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)))
+                            }
                         }
                     }
                 }

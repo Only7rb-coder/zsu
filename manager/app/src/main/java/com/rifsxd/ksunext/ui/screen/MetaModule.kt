@@ -111,15 +111,28 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
     var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Loading) }
     var selectedModule by remember { mutableStateOf<MetaModule?>(null) }
     var downloadingModuleId by remember { mutableStateOf<String?>(null) }
+    var downloadingDownloadId by remember { mutableStateOf<Long?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
 
-    DownloadListener(context) { uri ->
-        downloadedUri = uri
-        downloadingModuleId = null
-        navigator.navigate(
-            FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
-        )
-    }
+    DownloadListener(
+        context = context,
+        downloadId = downloadingDownloadId,
+        onDownloaded = { uri ->
+            downloadedUri = uri
+            downloadingDownloadId = null
+            downloadingModuleId = null
+            navigator.navigate(
+                FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
+            )
+        },
+        onFailed = { reason ->
+            downloadingDownloadId = null
+            downloadingModuleId = null
+            scope.launch {
+                snackBarHost.showSnackbar("Module download failed (code $reason)")
+            }
+        }
+    )
 
     val moduleViewModel = viewModel<ModuleViewModel>()
 
@@ -293,18 +306,38 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
                                     context.startActivity(intent)
                                 },
                                 onDownload = { selectedModule ->
-                                    downloadingModuleId = selectedModule.id
                                     scope.launch {
                                         try {
                                             val fileName = "${selectedModule.name.replace(" ", "_")}_${selectedModule.latestVersion.replace("/", "_")}.zip"
-                                            download(
-                                                context,
-                                                selectedModule.downloadUrl,
-                                                fileName,
-                                                "Downloading ${selectedModule.name}"
+                                            val id = download(
+                                                context = context,
+                                                url = selectedModule.downloadUrl,
+                                                fileName = fileName,
+                                                description = "Downloading ${selectedModule.name}",
+                                                onDownloaded = { uri ->
+                                                    scope.launch {
+                                                        downloadedUri = uri
+                                                        downloadingDownloadId = null
+                                                        downloadingModuleId = null
+                                                        navigator.navigate(
+                                                            FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))
+                                                        )
+                                                    }
+                                                },
+                                                onDownloading = {},
+                                                onFailed = { reason ->
+                                                    scope.launch {
+                                                        downloadingDownloadId = null
+                                                        downloadingModuleId = null
+                                                        snackBarHost.showSnackbar("Module download failed (code $reason)")
+                                                    }
+                                                }
                                             )
+                                            downloadingModuleId = selectedModule.id
+                                            downloadingDownloadId = id
                                         } catch (e: Exception) {
                                             snackBarHost.showSnackbar("Error downloading module: ${e.message}")
+                                            downloadingDownloadId = null
                                             downloadingModuleId = null
                                         }
                                     }
