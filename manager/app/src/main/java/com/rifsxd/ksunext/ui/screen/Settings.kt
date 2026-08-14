@@ -452,7 +452,12 @@ private fun KernelFeaturesCard(
                         val result = withContext(Dispatchers.IO) { ResetProps.run() }
                         resetPropsRunning = false
                         val message = when {
-                            !result.success -> context.getString(R.string.settings_reset_props_failed)
+                            !result.success -> context.getString(
+                                R.string.settings_reset_props_failed,
+                                result.diagnostic.ifBlank {
+                                    "root access, KernelSU resetprop, or property permissions unavailable"
+                                }
+                            )
                             result.changed == 0 && result.failed == 0 -> context.getString(
                                 R.string.settings_reset_props_no_changes
                             )
