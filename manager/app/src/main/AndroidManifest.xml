@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".KernelSUApplication"
@@ -15,6 +16,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KernelSU"
         tools:targetApi="34">
+        <receiver
+            android:name=".ui.util.ResetPropsBootReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"

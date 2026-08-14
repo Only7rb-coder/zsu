@@ -175,7 +175,9 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 )
                 SecurityCard(
                     navigator = navigator,
-                    loadingDialog = loadingDialog
+                    loadingDialog = loadingDialog,
+                    scope = scope,
+                    context = context
                 )
             }
 
@@ -421,6 +423,49 @@ private fun KernelFeaturesCard(
                     isAvcSpoofEnabled = checked
                 }
             }
+
+            val resetPropsPrefs = remember {
+                context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            }
+            var resetPropsEnabled by rememberSaveable {
+                mutableStateOf(resetPropsPrefs.getBoolean(ResetProps.PREF_ENABLED, false))
+            }
+            var resetPropsRunning by remember { mutableStateOf(false) }
+            SwitchItem(
+                icon = Icons.Filled.Refresh,
+                title = stringResource(R.string.settings_reset_props),
+                summary = when {
+                    resetPropsRunning -> stringResource(R.string.settings_reset_props_running)
+                    resetPropsEnabled -> stringResource(R.string.settings_reset_props_enabled_summary)
+                    else -> stringResource(R.string.settings_reset_props_summary)
+                },
+                checked = resetPropsEnabled,
+                enabled = !resetPropsRunning,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { enabled ->
+                resetPropsEnabled = enabled
+                resetPropsPrefs.edit { putBoolean(ResetProps.PREF_ENABLED, enabled) }
+                if (enabled) {
+                    resetPropsRunning = true
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) { ResetProps.run() }
+                        resetPropsRunning = false
+                        val message = when {
+                            !result.success -> context.getString(R.string.settings_reset_props_failed)
+                            result.changed == 0 && result.failed == 0 -> context.getString(
+                                R.string.settings_reset_props_no_changes
+                            )
+                            else -> context.getString(
+                                R.string.settings_reset_props_success,
+                                result.changed,
+                                result.failed
+                            )
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
     }
 }
@@ -428,7 +473,9 @@ private fun KernelFeaturesCard(
 @Composable
 private fun SecurityCard(
     navigator: DestinationsNavigator,
-    loadingDialog: LoadingDialogHandle
+    loadingDialog: LoadingDialogHandle,
+    scope: kotlinx.coroutines.CoroutineScope,
+    context: android.content.Context
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -544,35 +591,6 @@ private fun AppSettingsCard(
             ) {
                 prefs.edit { putBoolean("check_update", it) }
                 checkUpdate = it
-            }
-
-            var resetPropsRunning by rememberSaveable { mutableStateOf(false) }
-            SwitchItem(
-                icon = Icons.Filled.Refresh,
-                title = stringResource(R.string.settings_reset_props),
-                summary = if (resetPropsRunning) {
-                    stringResource(R.string.settings_reset_props_running)
-                } else {
-                    stringResource(R.string.settings_reset_props_summary)
-                },
-                checked = resetPropsRunning,
-                enabled = !resetPropsRunning,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-            ) { enabled ->
-                if (enabled && !resetPropsRunning) {
-                    resetPropsRunning = true
-                    scope.launch {
-                        val result = withContext(Dispatchers.IO) { ResetProps.run() }
-                        resetPropsRunning = false
-                        val message = if (result.success) {
-                            context.getString(R.string.settings_reset_props_success, result.changed)
-                        } else {
-                            context.getString(R.string.settings_reset_props_failed)
-                        }
-                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                    }
-                }
             }
 
             AppliedDpiItem(
