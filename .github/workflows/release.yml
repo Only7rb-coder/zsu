@@ -4,6 +4,20 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create, for example v1.0.0"
+        required: true
+        type: string
+      release_name:
+        description: "Optional release title"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the release as a pre-release"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-manager:
@@ -13,6 +27,13 @@ jobs:
     needs:
       - build-manager
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+      RELEASE_NAME_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || '' }}
+      RELEASE_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v7
@@ -57,12 +78,45 @@ jobs:
             fi
           done
 
+      - name: Prepare release metadata and validate assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "::error::A release tag is required"
+            exit 1
+          fi
+          APK_COUNT=$(find manager manager-spoofed -type f -name 'ZSU_*.apk' 2>/dev/null | wc -l || true)
+          if [[ "$APK_COUNT" -lt 2 ]]; then
+            echo "::error::Expected both normal and spoofed ZSU APKs, found $APK_COUNT"
+            find . -maxdepth 3 -type f -name '*.apk' -print || true
+            exit 1
+          fi
+          MANAGER_APK=$(find manager -type f -name '*.apk' | sort | head -n 1)
+          MANAGER_FILE=$(basename "$MANAGER_APK")
+          MANAGER_VERSION=$(printf '%s' "$MANAGER_FILE" | sed -E 's/^ZSU_(.+)-release\.apk$/\1/')
+          if [[ -z "$MANAGER_VERSION" || "$MANAGER_VERSION" == "$MANAGER_FILE" ]]; then
+            echo "::error::Could not parse manager version from $MANAGER_FILE"
+            exit 1
+          fi
+          RELEASE_TITLE="${RELEASE_NAME_INPUT:-ZSU Manager ${MANAGER_VERSION}}"
+          echo "RELEASE_TITLE=$RELEASE_TITLE" >> "$GITHUB_ENV"
+          echo "Manager APK version: $MANAGER_VERSION"
+          echo "Release tag: $RELEASE_TAG"
+          find manager manager-spoofed -type f -name '*.apk' -print
+
       - name: Display structure of downloaded files
         run: ls -R
 
       - name: release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ env.RELEASE_TITLE }}
+          prerelease: ${{ env.RELEASE_PRERELEASE }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             manager/*.apk
             manager-spoofed/*.apk
