@@ -111,18 +111,29 @@ jobs:
           rm -rf release-assets
           mkdir -p release-assets
           shopt -s nullglob
+          for asset in manager/*.apk; do
+            [[ -f "$asset" ]] && cp -f "$asset" release-assets/
+          done
+          for asset in manager-spoofed/*.apk; do
+            if [[ -f "$asset" ]]; then
+              base=$(basename "$asset" .apk)
+              cp -f "$asset" "release-assets/${base}-spoofed.apk"
+            fi
+          done
           for asset in \
-            manager/*.apk \
-            manager-spoofed/*.apk \
             android*-lkm/*_kernelsu.ko \
             boot-images-*/Image-*/*.img.gz \
             kernel-WSA*.zip \
             kernel-ARCVM*.zip \
             ksud/ksud-*; do
-            if [[ -f "$asset" ]]; then
-              cp -f "$asset" release-assets/
-            fi
+            [[ -f "$asset" ]] && cp -f "$asset" release-assets/
           done
+          RELEASE_APK_COUNT=$(find release-assets -maxdepth 1 -type f -name '*.apk' | wc -l)
+          if [[ "$RELEASE_APK_COUNT" -lt 2 ]]; then
+            echo "::error::Normal and spoofed APKs were not staged separately"
+            ls -la release-assets
+            exit 1
+          fi
           ASSET_COUNT=$(find release-assets -maxdepth 1 -type f | wc -l)
           if [[ "$ASSET_COUNT" -lt 2 ]]; then
             echo "::error::No usable release assets were collected"
