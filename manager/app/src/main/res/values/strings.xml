@@ -213,6 +213,15 @@
     <string name="settings_banner">Enable banners</string>
     <string name="settings_banner_summary">Show background banners for modules.</string>
     <string name="customization">Customization</string>
+    <string name="settings_applied_dpi">Applied DPI</string>
+    <string name="settings_applied_dpi_summary">Adjust the screen display density for the current application only</string>
+    <string name="settings_dpi_small">Small</string>
+    <string name="settings_dpi_medium">Medium</string>
+    <string name="settings_dpi_big">Big</string>
+    <string name="settings_dpi_oversize">Oversize</string>
+    <string name="settings_dpi_customizable">Customizable: %d</string>
+    <string name="settings_dpi_apply">Apply DPI settings</string>
+    <string name="settings_dpi_applied">DPI setting applied. Restarting manager…</string>
     <string name="developer">Developer</string>
     <string name="sucompat_disabled">SUCOMPAT DISABLED</string>
     <string name="zygisk_required">Zygisk required</string>

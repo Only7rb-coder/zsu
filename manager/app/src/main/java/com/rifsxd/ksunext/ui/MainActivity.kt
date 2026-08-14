@@ -202,7 +202,8 @@ class MainActivity : ComponentActivity() {
     val superUserViewModel: SuperUserViewModel by viewModels()
 
     override fun attachBaseContext(newBase: Context?) {
-        super.attachBaseContext(newBase?.let { LocaleHelper.applyLanguage(it) })
+        val localizedContext = newBase?.let { LocaleHelper.applyLanguage(it) }
+        super.attachBaseContext(localizedContext?.let { AppDensity.apply(it) })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
