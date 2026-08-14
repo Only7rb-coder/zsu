@@ -97,12 +97,19 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    val isManager = Natives.isManager
+    // Kernel presence and manager authorization are separate states. A freshly
+    // flashed boot image can expose the driver before the installed APK is
+    // recognized as the trusted manager, so never report that state as
+    // "not installed".
+    val detectedKernelVersion = runCatching { Natives.version }
+        .getOrDefault(-1)
+        .takeIf { it > 0 }
+    val isManager = detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
-    val ksuVersion = if (isManager) Natives.version else null
-    val ksuVersionTag = if (isManager) Natives.getVersionTag() else null
-    val kernelUAPIVersion = if (isManager) Natives.kernelUAPIVersion else null
-    val managerUAPIVersion = Natives.managerUAPIVersion
+    val ksuVersion = detectedKernelVersion
+    val ksuVersionTag = if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null
+    val kernelUAPIVersion = if (detectedKernelVersion != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null
+    val managerUAPIVersion = runCatching { Natives.managerUAPIVersion }.getOrDefault(0)
 
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -166,6 +173,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 ksuVersion,
                 kernelUAPIVersion,
                 lkmMode,
+                managerAuthorizedParam = isManager,
                 ksuVersionTagParam = ksuVersionTag
             ) {
                 navigator.navigate(InstallScreenDestination)
@@ -820,6 +828,7 @@ private fun StatusCard(
     uapiVerParam: Int? = null,
     lkmModeParam: Boolean?,
     moduleUpdateCount: Int = 0,
+    managerAuthorizedParam: Boolean = true,
     ksuVersionTagParam: String? = null,
     onClickInstall: () -> Unit = {}
 ) {
@@ -827,8 +836,8 @@ private fun StatusCard(
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(containerColor = run {
-            if (ksuVersionParam != null) MaterialTheme.colorScheme.primary
-            else if (kernelVersionParam.isGKI()) MaterialTheme.colorScheme.secondaryContainer
+            if (ksuVersionParam != null && managerAuthorizedParam) MaterialTheme.colorScheme.primary
+            else if (ksuVersionParam != null || kernelVersionParam.isGKI()) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.errorContainer
         })
     ) {
@@ -842,7 +851,7 @@ private fun StatusCard(
                 }
                 .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
-                ksuVersionParam != null -> {
+                ksuVersionParam != null && managerAuthorizedParam -> {
                     val workingMode = if (lkmModeParam == true || lkmModeParam == false) {
                         val mode = if (lkmModeParam == true) "LKM" else "BUILT-IN"
                         "$mode (" + kernelVersionParam.getKernelType() + ")"
@@ -962,6 +971,24 @@ private fun StatusCard(
                     }
                 }
 
+                ksuVersionParam != null -> {
+                    Icon(Icons.Filled.Warning, null)
+                    Column(Modifier.padding(start = 20.dp)) {
+                        Text(
+                            text = stringResource(R.string.home_kernel_detected_manager_unrecognized),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.home_kernel_detected_manager_unrecognized_tip,
+                                ksuVersionParam
+                            ),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
                 kernelVersionParam.isGKI() -> {
                     Icon(Icons.Filled.AutoFixHigh, null)
                     Column(Modifier.padding(start = 20.dp)) {
@@ -1030,8 +1057,10 @@ private fun InfoCard(autoExpand: Boolean = false) {
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
+    val detectedKernelVersion = runCatching { Natives.version }
+        .getOrDefault(-1)
+        .takeIf { it > 0 }
+    val ksuVersion = detectedKernelVersion
 
     var expanded by rememberSaveable { mutableStateOf(false) }
 
@@ -1466,8 +1495,9 @@ fun getManagerVersion(context: Context): Pair<String, Long> {
 @Composable
 private fun StatusCardPreview() {
     Column {
-        StatusCard(KernelVersion(5, 10, 101), 1, 1, null)
-        StatusCard(KernelVersion(5, 10, 101), 20000, 1, true)
+        StatusCard(KernelVersion(5, 10, 101), 1, 1, null, managerAuthorizedParam = true)
+        StatusCard(KernelVersion(5, 10, 101), 20000, 1, true, managerAuthorizedParam = true)
+        StatusCard(KernelVersion(5, 10, 101), 20000, 1, true, managerAuthorizedParam = false)
         StatusCard(KernelVersion(5, 10, 101), null, null, true)
         StatusCard(KernelVersion(4, 10, 101), null, null, false)
     }
