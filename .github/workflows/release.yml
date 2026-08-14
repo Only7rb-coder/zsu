@@ -105,6 +105,31 @@ jobs:
           echo "Release tag: $RELEASE_TAG"
           find manager manager-spoofed -type f -name '*.apk' -print
 
+          # Build one release-assets directory from files that actually exist.
+          # ZSU manager releases do not create AnyKernel3 archives, so an absent
+          # AnyKernel pattern must not abort the GitHub Release.
+          rm -rf release-assets
+          mkdir -p release-assets
+          shopt -s nullglob
+          for asset in \
+            manager/*.apk \
+            manager-spoofed/*.apk \
+            android*-lkm/*_kernelsu.ko \
+            boot-images-*/Image-*/*.img.gz \
+            kernel-WSA*.zip \
+            kernel-ARCVM*.zip \
+            ksud/ksud-*; do
+            if [[ -f "$asset" ]]; then
+              cp -f "$asset" release-assets/
+            fi
+          done
+          ASSET_COUNT=$(find release-assets -maxdepth 1 -type f | wc -l)
+          if [[ "$ASSET_COUNT" -lt 2 ]]; then
+            echo "::error::No usable release assets were collected"
+            exit 1
+          fi
+          echo "Collected $ASSET_COUNT release assets"
+
       - name: Display structure of downloaded files
         run: ls -R
 
@@ -117,12 +142,4 @@ jobs:
           prerelease: ${{ env.RELEASE_PRERELEASE }}
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: |
-            manager/*.apk
-            manager-spoofed/*.apk
-            android*-lkm/*_kernelsu.ko
-            AnyKernel3-*.zip
-            boot-images-*/Image-*/*.img.gz
-            kernel-WSA*.zip
-            kernel-ARCVM*.zip
-            ksud/ksud-*
+          files: release-assets/*
