@@ -81,7 +81,15 @@ private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
     it.endsWith(".zip")
 }
 
+private const val GPS_SETTER_APK_URL =
+    "https://github.com/Android1500/GpsSetter/releases/download/v1.2.9/app-release.apk"
+private const val GPS_SPOOF_LSPOSED_URL =
+    "https://github.com/Only7rb-coder/zsu/releases/download/v1.0.9/LSPosed-v1.9.2-it-7460-release.zip"
+
 private object AddonInstaller {
+    private fun shellQuote(value: String): String =
+        "'${value.replace("'", "'\\''")}'"
+
     private fun findAsset(rel: JSONObject, spec: ModuleSpec): Pair<String, String>? {
         val assets = rel.getJSONArray("assets")
         for (i in 0 until assets.length()) {
@@ -156,6 +164,27 @@ private object AddonInstaller {
             conn.disconnect()
         }
         if (dest.length() < 1024) throw Exception("Download too small, aborting")
+        val magic = ByteArray(2)
+        dest.inputStream().use { input ->
+            if (input.read(magic) != 2 || magic[0] != 'P'.code.toByte() || magic[1] != 'K'.code.toByte()) {
+                throw Exception("Downloaded file is not a valid APK/ZIP")
+            }
+        }
+    }
+
+    /** Installs a downloaded APK through the root package manager. */
+    fun installApk(apk: File, onLog: (String) -> Unit): Boolean {
+        val source = shellQuote(apk.absolutePath)
+        val target = shellQuote("/data/local/tmp/${apk.name}")
+        val command = "status=1; if cp $source $target && chmod 644 $target; then " +
+                "pm install -r -d $target; status=" + '$' + "?; fi; rm -f $target; exit " + '$' + "status"
+        val cb = object : CallbackList<String?>() {
+            override fun onAddElement(s: String?) { s?.let(onLog) }
+        }
+        val result = createRootShell(true).use { shell ->
+            shell.newJob().add(command).to(cb, cb).exec()
+        }
+        return result.isSuccess
     }
 
     /** Runs `ksud module install <zip>` in a root shell, streaming output to [onLog]. */
@@ -226,7 +255,59 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
             }
             loadingDialog.hide()
             busy = false
-            snackBarHost.showSnackbar(if (failed == 0) "$title: done" else "$title: $failed module(s) failed — see log")
+            snackBarHost.showSnackbar(if (failed == 0) "$title: done" else "$title: $failed item(s) failed — see log")
+        }
+    }
+
+    fun runGpsSpoof() {
+        if (busy) return
+        scope.launch {
+            busy = true
+            log = ""
+            loadingDialog.show()
+            var failed = 0
+            withContext(Dispatchers.IO) {
+                val apk = File(ksuApp.cacheDir, "gps-setter-v1.2.9.apk")
+                try {
+                    appendLog("» GPS Setter v1.2.9: downloading APK…")
+                    AddonInstaller.download(GPS_SETTER_APK_URL, apk)
+                    appendLog("  installing APK through root…")
+                    if (AddonInstaller.installApk(apk) { appendLog("  $it") }) {
+                        appendLog("✓ GPS Setter APK installed")
+                    } else {
+                        failed++
+                        appendLog("✗ GPS Setter APK install FAILED")
+                    }
+                } catch (e: Exception) {
+                    failed++
+                    appendLog("✗ GPS Setter APK: ${e.message}")
+                } finally {
+                    apk.delete()
+                }
+
+                val module = File(ksuApp.cacheDir, "LSPosed-v1.9.2-it-7460-release.zip")
+                try {
+                    appendLog("» LSPosed IT v1.9.2 (7460): downloading module…")
+                    AddonInstaller.download(GPS_SPOOF_LSPOSED_URL, module)
+                    appendLog("  installing module through ksud…")
+                    if (AddonInstaller.flashModuleZip(module) { appendLog("  $it") }) {
+                        appendLog("✓ LSPosed module installed")
+                    } else {
+                        failed++
+                        appendLog("✗ LSPosed module install FAILED")
+                    }
+                } catch (e: Exception) {
+                    failed++
+                    appendLog("✗ LSPosed module: ${e.message}")
+                } finally {
+                    module.delete()
+                }
+            }
+            loadingDialog.hide()
+            busy = false
+            snackBarHost.showSnackbar(
+                if (failed == 0) "GPS Spoof: done" else "GPS Spoof: $failed item(s) failed — see log"
+            )
         }
     }
 
@@ -278,6 +359,12 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Hide for unlocked bootloader devices 2") }
+
+            Button(
+                onClick = dropUnlessResumed { runGpsSpoof() },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("GPS Spoof") }
 
             Button(
                 onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) },
