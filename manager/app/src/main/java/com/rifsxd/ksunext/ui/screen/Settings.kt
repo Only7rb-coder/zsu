@@ -598,6 +598,33 @@ private fun AppSettingsCard(
                 checkUpdate = it
             }
 
+            var sleepModeEnabled by rememberSaveable {
+                mutableStateOf(SleepMode.isEnabled(context))
+            }
+            SwitchItem(
+                icon = Icons.Filled.Bedtime,
+                title = stringResource(R.string.settings_sleep_mode),
+                summary = stringResource(R.string.settings_sleep_mode_summary),
+                checked = sleepModeEnabled,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { enabled ->
+                sleepModeEnabled = enabled
+                scope.launch(Dispatchers.IO) {
+                    val applied = SleepMode.setEnabled(context, enabled)
+                    if (!applied) {
+                        withContext(Dispatchers.Main) {
+                            sleepModeEnabled = false
+                            Toast.makeText(
+                                context,
+                                R.string.settings_sleep_mode_failed,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            }
+
             AppliedDpiItem(
                 prefs = prefs,
                 context = context,
