@@ -1426,24 +1426,10 @@ fun IssueReportCard() {
                 .padding(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.issue_report_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.issue_report_body),
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.issue_report_body_2),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
                 IconButton(onClick = { safeOpenUri(zsuLinkContext, githubIssueUrl) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_github),
