@@ -49,6 +49,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.lifecycleScope
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
@@ -209,6 +210,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
+
+        // Sleep Mode force-stops the manager; clear its inactive state on the next launch.
+        lifecycleScope.launch(Dispatchers.IO) {
+            SleepMode.wakeIfNeeded(this@MainActivity)
+        }
 
         lifecycleScope.launch {
             if (superUserViewModel.appList.isEmpty()) {

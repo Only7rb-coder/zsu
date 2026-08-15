@@ -179,6 +179,9 @@
     <string name="module_changelog_failed">Fetch changelog failed: %s</string>
     <string name="settings_check_update">Check for updates</string>
     <string name="settings_check_update_summary">Automatically check for updates when opening the app.</string>
+    <string name="settings_sleep_mode">Manager Sleep Mode</string>
+    <string name="settings_sleep_mode_summary">Force-stop ZSU and mark only the manager inactive to reduce background activity. Open ZSU again to wake it.</string>
+    <string name="settings_sleep_mode_failed">Could not change Sleep Mode. Root access or Android package controls were unavailable.</string>
     <string name="grant_root_failed">Failed to grant root! Tap to restart manager process.</string>
     <string name="action">Action</string>
     <string name="webui">WebUI</string>
