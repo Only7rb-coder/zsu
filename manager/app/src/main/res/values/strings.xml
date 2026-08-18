@@ -183,7 +183,9 @@
     <string name="settings_sleep_mode_summary">Force-stop ZSU and mark only the manager inactive to reduce background activity. Open ZSU again to wake it.</string>
     <string name="settings_sleep_mode_failed">Could not change Sleep Mode. Root access or Android package controls were unavailable.</string>
     <string name="settings_gaming_performance_mode">Gaming Performance Mode</string>
-    <string name="settings_gaming_performance_mode_summary">Apply the gaming performance profile only while selected apps are running. Emergency thermal protection remains enabled.</string>
+    <string name="settings_gaming_performance_mode_summary">Root-only performance mode for selected apps. Uses Android Game Mode performance settings while keeping emergency thermal protection enabled.</string>
+    <string name="settings_gaming_performance_mode_root_required">Root permission is required. No performance settings were changed.</string>
+    <string name="settings_gaming_performance_mode_apply_failed">Could not apply performance mode to %d selected apps.</string>
     <string name="settings_gaming_performance_mode_apps">Configure apps</string>
     <string name="settings_gaming_performance_mode_apps_none">No apps selected. Tap to choose apps.</string>
     <string name="settings_gaming_performance_mode_apps_selected">%d apps selected</string>

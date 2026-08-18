@@ -2,7 +2,7 @@ package com.rifsxd.ksunext.ui.util
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.rifsxd.ksunext.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -69,6 +71,55 @@ object GamingPerformanceMode {
     fun setSelectedPackages(context: Context, packages: Set<String>) {
         context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             .edit { putStringSet(PREF_PACKAGES, packages.toSet()) }
+    }
+
+    data class ApplyResult(
+        val success: Boolean,
+        val rootAvailable: Boolean,
+        val changed: Int,
+        val failed: Int
+    )
+
+    private fun shellQuote(value: String): String =
+        "'${value.replace("'", "'\\\\''")}'"
+
+    /**
+     * Applies only the supported Android Game Mode command. The command is
+     * executed through a verified UID 0 shell; no non-root fallback is used.
+     * Thermal emergency protections are never disabled here.
+     */
+    fun apply(context: Context, performance: Boolean, packages: Set<String>): ApplyResult {
+        return createRootShell(true).use { shell ->
+            val uid = shell.newJob()
+                .add("id -u")
+                .to(ArrayList<String>(), null)
+                .exec()
+                .out
+                .firstOrNull()
+                ?.trim()
+            if (uid != "0") {
+                return@use ApplyResult(
+                    success = false,
+                    rootAvailable = false,
+                    changed = 0,
+                    failed = packages.size
+                )
+            }
+
+            var changed = 0
+            var failed = 0
+            packages.forEach { packageName ->
+                val mode = if (performance) "performance" else "standard"
+                val command = "cmd game mode --user 0 $mode ${shellQuote(packageName)}"
+                if (shell.newJob().add(command).exec().isSuccess) changed++ else failed++
+            }
+            ApplyResult(
+                success = failed == 0,
+                rootAvailable = true,
+                changed = changed,
+                failed = failed
+            )
+        }
     }
 
     data class LaunchableApp(
@@ -102,6 +153,7 @@ fun GamingPerformanceModeItem(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var enabled by rememberSaveable { mutableStateOf(prefs.getBoolean(GamingPerformanceMode.PREF_ENABLED, false)) }
     var selectedPackages by remember {
@@ -110,6 +162,7 @@ fun GamingPerformanceModeItem(
         )
     }
     var showAppPicker by rememberSaveable { mutableStateOf(false) }
+    var applying by remember { mutableStateOf(false) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         ListItem(
@@ -128,9 +181,29 @@ fun GamingPerformanceModeItem(
             trailingContent = {
                 Switch(
                     checked = enabled,
-                    onCheckedChange = {
-                        enabled = it
-                        prefs.edit { putBoolean(GamingPerformanceMode.PREF_ENABLED, it) }
+                    enabled = !applying,
+                    onCheckedChange = { requested ->
+                        applying = true
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                GamingPerformanceMode.apply(context, requested, selectedPackages)
+                            }
+                            applying = false
+                            if (result.success) {
+                                enabled = requested
+                                prefs.edit { putBoolean(GamingPerformanceMode.PREF_ENABLED, requested) }
+                            } else {
+                                val message = if (!result.rootAvailable) {
+                                    context.getString(R.string.settings_gaming_performance_mode_root_required)
+                                } else {
+                                    context.getString(
+                                        R.string.settings_gaming_performance_mode_apply_failed,
+                                        result.failed
+                                    )
+                                }
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 )
             }
