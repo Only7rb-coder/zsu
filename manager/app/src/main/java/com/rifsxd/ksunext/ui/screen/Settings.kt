@@ -233,7 +233,9 @@ private fun KernelFeaturesCard(
     val sulogSupported = sulogStatusParam == "supported"
     val adbRootSupported = adbRootStatus == "supported"
     val selinuxHideSupported = selinuxHideStatus == "supported"
-    val avcSpoofSupported = avcSpoofStatus == "supported"
+    // KernelSU reports module-managed features as "managed" even though the
+    // native manager ioctl can still read and apply the feature state.
+    val avcSpoofSupported = avcSpoofStatus == "supported" || avcSpoofStatus == "managed"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -425,10 +427,10 @@ private fun KernelFeaturesCard(
             SwitchItem(
                 icon = Icons.Filled.Shield,
                 title = stringResource(id = R.string.settings_enable_avc_spoof),
-                summary = if (avcSpoofSupported) {
-                    stringResource(id = R.string.settings_enable_avc_spoof_summary)
-                } else {
-                    stringResource(id = R.string.feature_status_unsupported_summary)
+                summary = when {
+                    avcSpoofStatus == "managed" -> stringResource(id = R.string.settings_enable_avc_spoof_managed_summary)
+                    avcSpoofSupported -> stringResource(id = R.string.settings_enable_avc_spoof_summary)
+                    else -> stringResource(id = R.string.feature_status_unsupported_summary)
                 },
                 checked = isAvcSpoofEnabled,
                 enabled = avcSpoofSupported,
@@ -437,9 +439,22 @@ private fun KernelFeaturesCard(
             ) { checked ->
                 val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                 if (Natives.setAvcSpoofEnabled(checked)) {
-                    execKsud("feature save", true)
+                    val saved = execKsud("feature save", true)
                     prefsLocal.edit { putInt("avc_spoof_mode", if (checked) 0 else 2) }
                     isAvcSpoofEnabled = checked
+                    if (!saved) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_enable_avc_spoof_save_failed),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_enable_avc_spoof_failed),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
 
