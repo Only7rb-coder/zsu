@@ -64,6 +64,16 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
+private data class SettingsFeatureSnapshot(
+    val suCompatStatus: String = "",
+    val kernelUmountStatus: String = "",
+    val adbRootStatus: String = "",
+    val selinuxHideStatus: String = "",
+    val sulogStatus: String = "",
+    val sulogEnabled: Boolean = false,
+    val avcSpoofStatus: String = ""
+)
+
 /**
  * @author weishu
  * @date 2023/1/1.
@@ -117,23 +127,30 @@ fun SettingScreen(navigator: DestinationsNavigator) {
         }
     }
 
-    var suCompatStatus by rememberSaveable { mutableStateOf("") }
-    var kernelUmountStatus by rememberSaveable { mutableStateOf("") }
-    var adbRootStatus by rememberSaveable { mutableStateOf("") }
-    var selinuxHideStatus by rememberSaveable { mutableStateOf("") }
-    var sulogStatus by rememberSaveable { mutableStateOf("") }
-    var isSulogEnabled by rememberSaveable { mutableStateOf(false) }
-    var avcSpoofStatus by rememberSaveable { mutableStateOf("") }
+    var featureSnapshot by remember { mutableStateOf(SettingsFeatureSnapshot()) }
 
     LaunchedEffect(Unit) {
-        suCompatStatus = getFeatureStatus("su_compat")
-        kernelUmountStatus = getFeatureStatus("kernel_umount")
-        sulogStatus = getFeatureStatus("sulog")
-        isSulogEnabled = getFeaturePersistValue("sulog") == 1L
-        adbRootStatus = getFeatureStatus("adb_root")
-
-        selinuxHideStatus = getFeatureStatus("selinux_hide")
-        avcSpoofStatus = getFeatureStatus("avc_spoof")
+        val featureNames = listOf(
+            "su_compat",
+            "kernel_umount",
+            "sulog",
+            "adb_root",
+            "selinux_hide",
+            "avc_spoof"
+        )
+        val (statusResults, sulogPersisted) = getFeatureStatusBatch(
+            features = featureNames,
+            persistedFeature = "sulog"
+        )
+        featureSnapshot = SettingsFeatureSnapshot(
+            suCompatStatus = statusResults["su_compat"].orEmpty(),
+            kernelUmountStatus = statusResults["kernel_umount"].orEmpty(),
+            adbRootStatus = statusResults["adb_root"].orEmpty(),
+            selinuxHideStatus = statusResults["selinux_hide"].orEmpty(),
+            sulogStatus = statusResults["sulog"].orEmpty(),
+            sulogEnabled = sulogPersisted == 1L,
+            avcSpoofStatus = statusResults["avc_spoof"].orEmpty()
+        )
     }
 
     Scaffold(
@@ -163,14 +180,16 @@ fun SettingScreen(navigator: DestinationsNavigator) {
         ) {
             if (ksuVersion != null) {
                 KernelFeaturesCard(
-                    suCompatStatus = suCompatStatus,
-                    kernelUmountStatus = kernelUmountStatus,
-                    sulogStatusParam = sulogStatus,
-                    isSulogEnabled = isSulogEnabled,
-                    onSulogEnabledChange = { isSulogEnabled = it },
-                    adbRootStatus = adbRootStatus,
-                    selinuxHideStatus = selinuxHideStatus,
-                    avcSpoofStatus = avcSpoofStatus,
+                    suCompatStatus = featureSnapshot.suCompatStatus,
+                    kernelUmountStatus = featureSnapshot.kernelUmountStatus,
+                    sulogStatusParam = featureSnapshot.sulogStatus,
+                    isSulogEnabled = featureSnapshot.sulogEnabled,
+                    onSulogEnabledChange = { enabled ->
+                        featureSnapshot = featureSnapshot.copy(sulogEnabled = enabled)
+                    },
+                    adbRootStatus = featureSnapshot.adbRootStatus,
+                    selinuxHideStatus = featureSnapshot.selinuxHideStatus,
+                    avcSpoofStatus = featureSnapshot.avcSpoofStatus,
                     scope = scope
                 )
                 SecurityCard(

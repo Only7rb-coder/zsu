@@ -29,6 +29,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.rifsxd.ksunext.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 object GamingPerformanceMode {
@@ -193,7 +196,14 @@ private fun GamingPerformanceModeAppPicker(
     onSave: (Set<String>) -> Unit
 ) {
     val context = LocalContext.current
-    val apps = remember { GamingPerformanceMode.installedLaunchableApps(context) }
+    var apps by remember { mutableStateOf<List<GamingPerformanceMode.LaunchableApp>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        apps = withContext(Dispatchers.IO) {
+            GamingPerformanceMode.installedLaunchableApps(context)
+        }
+        isLoading = false
+    }
     var query by rememberSaveable { mutableStateOf("") }
     var checkedPackages by remember { mutableStateOf(selectedPackages.toSet()) }
     val filteredApps = remember(query, apps) {
@@ -218,8 +228,15 @@ private fun GamingPerformanceModeAppPicker(
                 )
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider()
-                LazyColumn(modifier = Modifier.height(360.dp)) {
-                    items(filteredApps, key = { it.packageName }) { app ->
+                if (isLoading) {
+                    Text(
+                        text = context.getString(R.string.settings_gaming_performance_mode_apps_loading),
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.height(360.dp)) {
+                        items(filteredApps, key = { it.packageName }) { app ->
                         val checked = app.packageName in checkedPackages
                         Row(
                             modifier = Modifier
@@ -252,6 +269,7 @@ private fun GamingPerformanceModeAppPicker(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1
                                 )
+                            }
                             }
                         }
                     }

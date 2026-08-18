@@ -188,6 +188,7 @@
     <string name="settings_gaming_performance_mode_apps_none">No apps selected. Tap to choose apps.</string>
     <string name="settings_gaming_performance_mode_apps_selected">%d apps selected</string>
     <string name="settings_gaming_performance_mode_apps_search">Search installed apps</string>
+    <string name="settings_gaming_performance_mode_apps_loading">Loading installed apps…</string>
     <string name="grant_root_failed">Failed to grant root! Tap to restart manager process.</string>
     <string name="action">Action</string>
     <string name="webui">WebUI</string>

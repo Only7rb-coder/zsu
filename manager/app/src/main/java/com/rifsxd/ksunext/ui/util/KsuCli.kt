@@ -107,12 +107,63 @@ suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.
 }
 
 suspend fun getFeaturePersistValue(feature: String): Long? = withContext(Dispatchers.IO) {
-    val shell = createRootShell(true)
-    
-    val out = shell.newJob()
-        .add("${getKsuDaemonPath()} feature get --config $feature").to(ArrayList<String>(), null).exec().out
-    val valueLine = out.firstOrNull { it.trim().startsWith("Value:") } ?: return@withContext null
-    valueLine.substringAfter("Value:").trim().toLongOrNull()
+    createRootShell(true).use { shell ->
+        val out = shell.newJob()
+            .add("${getKsuDaemonPath()} feature get --config $feature")
+            .to(ArrayList<String>(), null)
+            .exec()
+            .out
+        val valueLine = out.firstOrNull { it.trim().startsWith("Value:") }
+            ?: return@withContext null
+        valueLine.substringAfter("Value:").trim().toLongOrNull()
+    }
+}
+
+/**
+ * Reads several KernelSU feature states through one root shell. Opening a new
+ * privileged shell for every feature makes Settings feel slow on devices where
+ * the daemon startup path is expensive.
+ */
+suspend fun getFeatureStatusBatch(
+    features: List<String>,
+    persistedFeature: String? = null
+): Pair<Map<String, String>, Long?> = withContext(Dispatchers.IO) {
+    val output = ArrayList<String>()
+    createRootShell(true).use { shell ->
+        val job = shell.newJob()
+        features.forEach { feature ->
+            job.add("printf '__ZSU_FEATURE__${feature}__\\n'")
+            job.add("${getKsuDaemonPath()} feature check $feature")
+        }
+        persistedFeature?.let { feature ->
+            job.add("printf '__ZSU_PERSIST__${feature}__\\n'")
+            job.add("${getKsuDaemonPath()} feature get --config $feature")
+        }
+        job.to(output, null).exec()
+    }
+
+    val statuses = linkedMapOf<String, String>()
+    var activeFeature: String? = null
+    var persistedValue: Long? = null
+    output.forEach { rawLine ->
+        val line = rawLine.trim()
+        when {
+            line.startsWith("__ZSU_FEATURE__") && line.endsWith("__") -> {
+                activeFeature = line.removePrefix("__ZSU_FEATURE__").removeSuffix("__")
+            }
+            line.startsWith("__ZSU_PERSIST__") && line.endsWith("__") -> {
+                activeFeature = null
+            }
+            activeFeature != null && line.isNotEmpty() -> {
+                statuses[activeFeature!!] = line
+                activeFeature = null
+            }
+            line.startsWith("Value:") -> {
+                persistedValue = line.substringAfter("Value:").trim().toLongOrNull()
+            }
+        }
+    }
+    statuses to persistedValue
 }
 
 fun install() {
