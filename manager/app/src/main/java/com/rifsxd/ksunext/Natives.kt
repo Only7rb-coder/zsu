@@ -137,7 +137,7 @@ object Natives {
      *  negative : error
      */
     external fun isAvcSpoofEnabled(): Boolean
-    external fun setAvcSpoofEnabled(enabled: Boolean): Boolean
+    external fun setAvcSpoofEnabled(enabled: Boolean): Int
 
     external fun getSuperuserCount(): Int
 

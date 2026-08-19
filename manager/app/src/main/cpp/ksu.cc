@@ -243,11 +243,20 @@ bool is_selinux_hide_enabled() {
     return value != 0;
 }
 
-bool set_avc_spoof_enabled(bool enabled) {
+int set_avc_spoof_enabled(bool enabled) {
     struct ksu_set_feature_cmd cmd = {};
     cmd.feature_id = KSU_FEATURE_AVC_SPOOF;
     cmd.value = enabled ? 1 : 0;
-    return ksuctl(KSU_IOCTL_SET_FEATURE, &cmd) == 0;
+    if (fd < 0) {
+        fd = scan_driver_fd();
+    }
+    if (fd < 0) {
+        return -ENODEV;
+    }
+    if (ioctl(fd, KSU_IOCTL_SET_FEATURE, &cmd) == 0) {
+        return 0;
+    }
+    return -errno;
 }
 
 bool is_avc_spoof_enabled() {

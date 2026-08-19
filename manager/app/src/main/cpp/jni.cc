@@ -416,7 +416,7 @@ Java_com_rifsxd_ksunext_Natives_isAvcSpoofEnabled(JNIEnv *env, jobject thiz) {
     return is_avc_spoof_enabled();
 }
 extern "C"
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jint JNICALL
 Java_com_rifsxd_ksunext_Natives_setAvcSpoofEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_avc_spoof_enabled(enabled);
 }

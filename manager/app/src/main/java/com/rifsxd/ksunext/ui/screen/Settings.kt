@@ -438,7 +438,8 @@ private fun KernelFeaturesCard(
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
             ) { checked ->
                 val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                if (Natives.setAvcSpoofEnabled(checked)) {
+                val result = Natives.setAvcSpoofEnabled(checked)
+                if (result == 0) {
                     val saved = execKsud("feature save", true)
                     prefsLocal.edit { putInt("avc_spoof_mode", if (checked) 0 else 2) }
                     isAvcSpoofEnabled = checked
@@ -452,7 +453,7 @@ private fun KernelFeaturesCard(
                 } else {
                     Toast.makeText(
                         context,
-                        context.getString(R.string.settings_enable_avc_spoof_failed),
+                        context.getString(R.string.settings_enable_avc_spoof_failed, result),
                         Toast.LENGTH_LONG
                     ).show()
                 }
