@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for v1.0.18 while preserving v1.0.10 behavior.
-    return 33268
+    // Release packaging override for v1.0.19 with KernelSU-Next AVC Spoof.
+    return 33269
 }
 
 fun getVersionName(): String {
