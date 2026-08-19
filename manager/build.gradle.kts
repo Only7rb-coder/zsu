@@ -48,9 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    val commitCount = getGitCommitCount()
-    val major = 1
-    return major * 30000 + commitCount
+    // Release packaging override for v1.1.0 with the fixed OhMyKeymint Addons bundle.
+    return 33300
 }
 
 fun getVersionName(): String {
