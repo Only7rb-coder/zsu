@@ -48,9 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    val commitCount = getGitCommitCount()
-    val major = 1
-    return major * 30000 + commitCount
+    // Release packaging override for v1.0.18 while preserving v1.0.10 behavior.
+    return 33268
 }
 
 fun getVersionName(): String {
