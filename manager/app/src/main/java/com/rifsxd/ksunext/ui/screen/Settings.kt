@@ -660,10 +660,6 @@ private fun AppSettingsCard(
                 }
             }
 
-            GamingPerformanceModeItem(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-            )
-
             AppliedDpiItem(
                 prefs = prefs,
                 context = context,
