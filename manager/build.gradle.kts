@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for v1.1.0 with the fixed OhMyKeymint Addons bundle.
-    return 33300
+    // Release packaging override for the CheatNinja contributor update.
+    return 33301
 }
 
 fun getVersionName(): String {

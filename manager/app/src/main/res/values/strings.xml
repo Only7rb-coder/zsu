@@ -182,6 +182,8 @@
     <string name="settings_sleep_mode">Manager Sleep Mode</string>
     <string name="settings_sleep_mode_summary">Force-stop ZSU and mark only the manager inactive to reduce background activity. Open ZSU again to wake it.</string>
     <string name="settings_sleep_mode_failed">Could not change Sleep Mode. Root access or Android package controls were unavailable.</string>
+    <string name="contributor_channel">Channel</string>
+    <string name="contributor_owner">Owner</string>
     <string name="grant_root_failed">Failed to grant root! Tap to restart manager process.</string>
     <string name="action">Action</string>
     <string name="webui">WebUI</string>

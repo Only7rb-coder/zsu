@@ -1267,9 +1267,16 @@ private fun InfoCard(autoExpand: Boolean = false) {
 data class Contributor(
     val login: String,
     val name: String? = null,
-    val githubUrl: String,
+    val profileUrl: String,
     val role: String,
-    val donationUrl: String
+    val avatarRes: Int? = null,
+    val actions: List<ContributorAction>
+)
+
+data class ContributorAction(
+    val label: String,
+    val url: String,
+    val icon: ImageVector
 )
 
 @Composable
@@ -1280,9 +1287,33 @@ fun ContributorsCard() {
         Contributor(
             login = "Only7rb-coder",
             name = "MARO_ROOT",
-            githubUrl = "https://github.com/Only7rb-coder",
+            profileUrl = "https://github.com/Only7rb-coder",
             role = "ZSU Owner & Maintainer",
-            donationUrl = "https://t.me/maroroot"
+            actions = listOf(
+                ContributorAction(
+                    label = stringResource(R.string.support),
+                    url = "https://t.me/maroroot",
+                    icon = Icons.Filled.Favorite
+                )
+            )
+        ),
+        Contributor(
+            login = "CheatNinja",
+            role = "ZSU Partner",
+            profileUrl = "https://t.me/CheatNinja_TGs_Official",
+            avatarRes = R.drawable.cheatninja_logo,
+            actions = listOf(
+                ContributorAction(
+                    label = stringResource(R.string.contributor_channel),
+                    url = "https://t.me/CheatNinja_TGs_Official",
+                    icon = Icons.AutoMirrored.Filled.Send
+                ),
+                ContributorAction(
+                    label = stringResource(R.string.contributor_owner),
+                    url = "https://t.me/ileadershipi",
+                    icon = Icons.Filled.Person
+                )
+            )
         )
     )
 
@@ -1302,8 +1333,8 @@ fun ContributorsCard() {
             contributors.forEach { contributor ->
                 ContributorRow(
                     contributor = contributor,
-                    onProfileClick = { safeOpenUri(zsuLinkContext, contributor.githubUrl) },
-                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.donationUrl) }
+                    onProfileClick = { safeOpenUri(zsuLinkContext, contributor.profileUrl) },
+                    onActionClick = { action -> safeOpenUri(zsuLinkContext, action.url) }
                 )
             }
         }
@@ -1314,7 +1345,7 @@ fun ContributorsCard() {
 private fun ContributorRow(
     contributor: Contributor,
     onProfileClick: () -> Unit,
-    onDonateClick: () -> Unit
+    onActionClick: (ContributorAction) -> Unit
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
 
@@ -1346,16 +1377,25 @@ private fun ContributorRow(
                 contentAlignment = Alignment.Center
             ) {
                 if (!imageLoadFailed) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data("https://avatars.githubusercontent.com/${contributor.login}?s=80")
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = contributor.login,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        onError = { imageLoadFailed = true }
-                    )
+                    if (contributor.avatarRes != null) {
+                        Image(
+                            painter = painterResource(contributor.avatarRes),
+                            contentDescription = contributor.login,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data("https://avatars.githubusercontent.com/${contributor.login}?s=80")
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = contributor.login,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            onError = { imageLoadFailed = true }
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -1390,25 +1430,29 @@ private fun ContributorRow(
             }
         }
 
-        OutlinedButton(
-            onClick = onDonateClick,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Favorite,
-                contentDescription = null,
-                modifier = Modifier.size(13.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                text = stringResource(R.string.support),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            contributor.actions.forEach { action ->
+                OutlinedButton(
+                    onClick = { onActionClick(action) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.height(30.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(
+                        imageVector = action.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = action.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
