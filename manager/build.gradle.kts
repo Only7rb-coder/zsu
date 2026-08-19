@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for v1.0.19 with KernelSU-Next AVC Spoof.
-    return 33269
+    // Release packaging override for v1.1.0 with the fixed OhMyKeymint Addons bundle.
+    return 33300
 }
 
 fun getVersionName(): String {

@@ -40,15 +40,24 @@ private data class ModuleSpec(
     val repo: String,
     val beta: Boolean = false,
     val preferredTag: String? = null,
+    val fixedUrl: String? = null,
     val assetMatch: (String) -> Boolean
 )
+
+private const val OH_MY_KEYMINT_V1_2_0_URL =
+    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.0/OhMyKeymint-release-arm64-v8a-1.2.0-cd84235.zip"
 
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
         it.endsWith(".zip") && it.contains("release")
     },
-    ModuleSpec("Oh My Keymint", "qwq233/OhMyKeymint", preferredTag = "v1.2.0-85caeb3") {
-        it.endsWith(".zip") && it.contains("release") && it.contains("arm64")
+    ModuleSpec(
+        "Oh My Keymint",
+        "Only7rb-coder/zsu",
+        preferredTag = "v1.1.0",
+        fixedUrl = OH_MY_KEYMINT_V1_2_0_URL
+    ) {
+        it == "OhMyKeymint-release-arm64-v8a-1.2.0-cd84235.zip"
     },
     ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true, preferredTag = "v5.0-beta.4") {
         it.endsWith(".zip")
@@ -120,6 +129,9 @@ private object AddonInstaller {
 
     /** Returns (downloadUrl, tag) of the best asset of the latest (beta) release. */
     fun resolveLatest(spec: ModuleSpec): Pair<String, String> {
+        spec.fixedUrl?.let { url ->
+            return url to (spec.preferredTag ?: "fixed")
+        }
         spec.preferredTag?.let { tag ->
             runCatching {
                 JSONObject(httpGet("https://api.github.com/repos/${spec.repo}/releases/tags/$tag"))
