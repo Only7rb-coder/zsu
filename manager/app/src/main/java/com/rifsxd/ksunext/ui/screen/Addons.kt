@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -17,7 +18,6 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.rifsxd.ksunext.ksuApp
-import com.rifsxd.ksunext.ui.component.rememberLoadingDialog
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.createRootShell
 import com.topjohnwu.superuser.CallbackList
@@ -30,6 +30,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.math.roundToInt
 
 /**
  * ZSU "Addons" tab: one-tap installers for common root-hiding module sets.
@@ -45,17 +46,20 @@ private data class ModuleSpec(
     val assetMatch: (String) -> Boolean
 )
 
+private const val TEESIMULATOR_RS_V6_0_1_324_URL =
+    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.3/TEESimulator-RS-v6.0.1-324-Release.zip"
+
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
         it.endsWith(".zip") && it.contains("release")
     },
     ModuleSpec(
-        "TEESimulator-RS (Canary)",
-        "Enginex0/TEESimulator-RS",
-        beta = true
+        "TEESimulator-RS v6.0.1-324",
+        "Only7rb-coder/zsu",
+        preferredTag = "v1.1.3",
+        fixedUrl = TEESIMULATOR_RS_V6_0_1_324_URL
     ) {
-        it.startsWith("TEESimulator-RS-") &&
-            it.endsWith("-Release.zip", ignoreCase = true)
+        it == "TEESimulator-RS-v6.0.1-324-Release.zip"
     },
     ModuleSpec("Tricky Addon Enhanced", "Enginex0/tricky-addon-enhanced") {
         it.startsWith("TA_enhanced-") &&
@@ -142,7 +146,7 @@ private object AddonInstaller {
         }
     }
 
-    fun download(url: String, dest: File) {
+    fun download(url: String, dest: File, onProgress: (Float) -> Unit = {}) {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20000
             readTimeout = 60000
@@ -152,7 +156,22 @@ private object AddonInstaller {
         try {
             val code = conn.responseCode
             if (code != 200) throw Exception("Download HTTP $code")
-            dest.outputStream().use { out -> conn.inputStream.copyTo(out) }
+            val contentLength = conn.contentLengthLong
+            var copied = 0L
+            conn.inputStream.use { input ->
+                dest.outputStream().use { out ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val bytesRead = input.read(buffer)
+                        if (bytesRead < 0) break
+                        out.write(buffer, 0, bytesRead)
+                        copied += bytesRead
+                        if (contentLength > 0) {
+                            onProgress((copied.toFloat() / contentLength).coerceIn(0f, 1f))
+                        }
+                    }
+                }
+            }
         } finally {
             conn.disconnect()
         }
@@ -210,44 +229,73 @@ private object AddonInstaller {
 fun AddonsScreen(navigator: DestinationsNavigator) {
     val scope = rememberCoroutineScope()
     val snackBarHost = LocalSnackbarHost.current
-    val loadingDialog = rememberLoadingDialog()
 
     var busy by remember { mutableStateOf(false) }
     var log by remember { mutableStateOf("") }
+    var installProgress by remember { mutableFloatStateOf(0f) }
+    var installStatus by remember { mutableStateOf("") }
 
     fun appendLog(s: String) { log += s + "\n" }
+    fun updateProgress(progress: Float, status: String) {
+        scope.launch {
+            installProgress = progress.coerceIn(0f, 1f)
+            installStatus = status
+        }
+    }
 
     fun runInstall(title: String, modules: List<ModuleSpec>, afterAll: ((() -> Unit)?) = null) {
         if (busy) return
         scope.launch {
             busy = true
             log = ""
-            loadingDialog.show()
+            installProgress = 0f
+            installStatus = "Preparing $title…"
             var failed = 0
             withContext(Dispatchers.IO) {
-                modules.forEach { spec ->
+                modules.forEachIndexed { index, spec ->
+                    val completedShare = index.toFloat() / modules.size
+                    val moduleShare = 1f / modules.size
                     try {
+                        updateProgress(completedShare, "Resolving ${spec.label}…")
                         appendLog("» ${spec.label}: resolving latest ${if (spec.beta) "Canary " else ""}release…")
                         val (url, tag) = AddonInstaller.resolveLatest(spec)
+                        updateProgress(completedShare + moduleShare * 0.08f, "Downloading ${spec.label}…")
                         appendLog("  ${spec.label} $tag — downloading…")
                         val zip = File(
                             ksuApp.cacheDir,
                             "addon_${spec.label.replace(Regex("[^A-Za-z0-9._-]"), "_")}.zip"
                         )
-                        AddonInstaller.download(url, zip)
+                        AddonInstaller.download(url, zip) { downloadProgress ->
+                            updateProgress(
+                                completedShare + moduleShare * (0.08f + downloadProgress * 0.57f),
+                                "Downloading ${spec.label}… ${(downloadProgress * 100).roundToInt()}%"
+                            )
+                        }
+                        updateProgress(completedShare + moduleShare * 0.68f, "Installing ${spec.label}…")
                         appendLog("  installing…")
                         val ok = AddonInstaller.flashModuleZip(zip) { appendLog("  $it") }
                         zip.delete()
-                        if (ok) appendLog("✓ ${spec.label} installed") else { failed++; appendLog("✗ ${spec.label} install FAILED") }
+                        if (ok) {
+                            appendLog("✓ ${spec.label} installed")
+                        } else {
+                            failed++
+                            appendLog("✗ ${spec.label} install FAILED")
+                        }
                     } catch (e: Exception) {
                         failed++
                         appendLog("✗ ${spec.label}: ${e.message}")
                     }
+                    updateProgress(
+                        (index + 1).toFloat() / modules.size,
+                        "${index + 1} of ${modules.size} module(s) processed"
+                    )
                 }
+                updateProgress(0.98f, "Finalizing $title…")
                 afterAll?.invoke()
             }
-            loadingDialog.hide()
             busy = false
+            installProgress = 1f
+            installStatus = if (failed == 0) "$title complete" else "$title finished with $failed failure(s)"
             snackBarHost.showSnackbar(if (failed == 0) "$title: done" else "$title: $failed item(s) failed — see log")
         }
     }
@@ -257,13 +305,18 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
         scope.launch {
             busy = true
             log = ""
-            loadingDialog.show()
+            installProgress = 0f
+            installStatus = "Preparing GPS Spoof…"
             var failed = 0
             withContext(Dispatchers.IO) {
                 val apk = File(ksuApp.cacheDir, "gps-setter-v1.2.9.apk")
                 try {
+                    updateProgress(0.05f, "Downloading GPS Setter…")
                     appendLog("» GPS Setter v1.2.9: downloading APK…")
-                    AddonInstaller.download(GPS_SETTER_APK_URL, apk)
+                    AddonInstaller.download(GPS_SETTER_APK_URL, apk) { downloadProgress ->
+                        updateProgress(0.05f + downloadProgress * 0.35f, "Downloading GPS Setter… ${(downloadProgress * 100).roundToInt()}%")
+                    }
+                    updateProgress(0.42f, "Installing GPS Setter…")
                     appendLog("  installing APK through root…")
                     if (AddonInstaller.installApk(apk) { appendLog("  $it") }) {
                         appendLog("✓ GPS Setter APK installed")
@@ -280,8 +333,12 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
 
                 val module = File(ksuApp.cacheDir, "LSPosed-v1.9.2-it-7460-release.zip")
                 try {
+                    updateProgress(0.52f, "Downloading LSPosed…")
                     appendLog("» LSPosed IT v1.9.2 (7460): downloading module…")
-                    AddonInstaller.download(GPS_SPOOF_LSPOSED_URL, module)
+                    AddonInstaller.download(GPS_SPOOF_LSPOSED_URL, module) { downloadProgress ->
+                        updateProgress(0.52f + downloadProgress * 0.35f, "Downloading LSPosed… ${(downloadProgress * 100).roundToInt()}%")
+                    }
+                    updateProgress(0.9f, "Installing LSPosed…")
                     appendLog("  installing module through ksud…")
                     if (AddonInstaller.flashModuleZip(module) { appendLog("  $it") }) {
                         appendLog("✓ LSPosed module installed")
@@ -296,8 +353,9 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                     module.delete()
                 }
             }
-            loadingDialog.hide()
             busy = false
+            installProgress = 1f
+            installStatus = if (failed == 0) "GPS Spoof complete" else "GPS Spoof finished with $failed failure(s)"
             snackBarHost.showSnackbar(
                 if (failed == 0) "GPS Spoof: done" else "GPS Spoof: $failed item(s) failed — see log"
             )
@@ -349,6 +407,28 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Install BRENE for susfs users") }
+
+            if (busy || installStatus.isNotBlank()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(installStatus, style = MaterialTheme.typography.bodyMedium)
+                            Text("${(installProgress * 100).roundToInt()}%", style = MaterialTheme.typography.labelLarge)
+                        }
+                        LinearProgressIndicator(
+                            progress = installProgress,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
 
             if (log.isNotEmpty()) {
                 Card(modifier = Modifier.fillMaxWidth()) {

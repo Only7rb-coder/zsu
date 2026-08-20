@@ -1276,7 +1276,8 @@ data class ContributorAction(
     val label: String,
     val url: String,
     val icon: ImageVector? = null,
-    val iconRes: Int? = null
+    val iconRes: Int? = null,
+    val compact: Boolean = false
 )
 
 @Composable
@@ -1293,12 +1294,14 @@ fun ContributorsCard() {
                 ContributorAction(
                     label = stringResource(R.string.issue_report_github),
                     url = "https://github.com/Only7rb-coder",
-                    iconRes = R.drawable.ic_github
+                    iconRes = R.drawable.ic_github,
+                    compact = true
                 ),
                 ContributorAction(
                     label = stringResource(R.string.issue_report_telegram),
                     url = "https://t.me/maroroot",
-                    iconRes = R.drawable.ic_telegram
+                    iconRes = R.drawable.ic_telegram,
+                    compact = true
                 )
             )
         ),
@@ -1437,33 +1440,58 @@ private fun ContributorRow(
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             contributor.actions.forEach { action ->
-                OutlinedButton(
-                    onClick = { onActionClick(action) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.height(30.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    when {
-                        action.iconRes != null -> Icon(
-                            painter = painterResource(action.iconRes),
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        action.icon != null -> Icon(
-                            imageVector = action.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                if (action.compact) {
+                    IconButton(
+                        onClick = { onActionClick(action) },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                    ) {
+                        when {
+                            action.iconRes != null -> Icon(
+                                painter = painterResource(action.iconRes),
+                                contentDescription = action.label,
+                                modifier = Modifier.size(17.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            action.icon != null -> Icon(
+                                imageVector = action.icon,
+                                contentDescription = action.label,
+                                modifier = Modifier.size(17.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onActionClick(action) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        when {
+                            action.iconRes != null -> Icon(
+                                painter = painterResource(action.iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            action.icon != null -> Icon(
+                                imageVector = action.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = action.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = action.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
