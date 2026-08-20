@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for the CheatNinja contributor update.
-    return 33301
+    // Release packaging override for the Addons and Home-screen update.
+    return 33302
 }
 
 fun getVersionName(): String {

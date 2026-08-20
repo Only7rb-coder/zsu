@@ -267,7 +267,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
 
             InfoCard(autoExpand = developerOptionsEnabled)
-            IssueReportCard()
             ContributorsCard()
             Spacer(Modifier)
         }
@@ -1276,7 +1275,8 @@ data class Contributor(
 data class ContributorAction(
     val label: String,
     val url: String,
-    val icon: ImageVector
+    val icon: ImageVector? = null,
+    val iconRes: Int? = null
 )
 
 @Composable
@@ -1291,9 +1291,14 @@ fun ContributorsCard() {
             role = "ZSU Owner & Maintainer",
             actions = listOf(
                 ContributorAction(
-                    label = stringResource(R.string.support),
+                    label = stringResource(R.string.issue_report_github),
+                    url = "https://github.com/Only7rb-coder",
+                    iconRes = R.drawable.ic_github
+                ),
+                ContributorAction(
+                    label = stringResource(R.string.issue_report_telegram),
                     url = "https://t.me/maroroot",
-                    icon = Icons.Filled.Favorite
+                    iconRes = R.drawable.ic_telegram
                 )
             )
         ),
@@ -1439,51 +1444,25 @@ private fun ContributorRow(
                     shape = RoundedCornerShape(20.dp),
                     border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
-                    Icon(
-                        imageVector = action.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(13.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    when {
+                        action.iconRes != null -> Icon(
+                            painter = painterResource(action.iconRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        action.icon != null -> Icon(
+                            imageVector = action.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = action.label,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun IssueReportCard() {
-    val zsuLinkContext = LocalContext.current
-    val githubIssueUrl = stringResource(R.string.issue_report_github_link)
-    val telegramUrl = stringResource(R.string.issue_report_telegram_link)
-
-    Card {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(onClick = { safeOpenUri(zsuLinkContext, githubIssueUrl) }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_github),
-                        contentDescription = stringResource(R.string.issue_report_github),
-                    )
-                }
-                IconButton(onClick = { safeOpenUri(zsuLinkContext, telegramUrl) }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_telegram),
-                        contentDescription = stringResource(R.string.issue_report_telegram),
                     )
                 }
             }

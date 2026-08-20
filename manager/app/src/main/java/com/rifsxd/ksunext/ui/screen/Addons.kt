@@ -33,7 +33,8 @@ import java.net.URL
 
 /**
  * ZSU "Addons" tab: one-tap installers for common root-hiding module sets.
- * Modules are always fetched from the LATEST GitHub release (beta for Tricky Addon).
+ * Modules are always fetched from the latest matching GitHub release, including the
+ * TEESimulator-RS Canary pre-release channel.
  */
 private data class ModuleSpec(
     val label: String,
@@ -44,42 +45,22 @@ private data class ModuleSpec(
     val assetMatch: (String) -> Boolean
 )
 
-private const val OH_MY_KEYMINT_V1_2_0_URL =
-    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.0/OhMyKeymint-release-arm64-v8a-1.2.0-cd84235.zip"
-
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
         it.endsWith(".zip") && it.contains("release")
     },
     ModuleSpec(
-        "Oh My Keymint",
-        "Only7rb-coder/zsu",
-        preferredTag = "v1.1.0",
-        fixedUrl = OH_MY_KEYMINT_V1_2_0_URL
-    ) {
-        it == "OhMyKeymint-release-arm64-v8a-1.2.0-cd84235.zip"
-    },
-    ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true, preferredTag = "v5.0-beta.4") {
-        it.endsWith(".zip")
-    },
-    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
-        it.endsWith(".zip") && it.contains("ZYGISK") && it.contains("release")
-    }
-)
-
-private val HIDE_UNLOCKED_MODULES_2 = listOf(
-    ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
-        it.endsWith(".zip") && it.contains("release")
-    },
-    ModuleSpec(
-        "TEESimulator-RS v6.0.1-307",
+        "TEESimulator-RS (Canary)",
         "Enginex0/TEESimulator-RS",
-        preferredTag = "v6.0.1-307"
+        beta = true
     ) {
-        it == "TEESimulator-RS-v6.0.1-307-Release.zip"
+        it.startsWith("TEESimulator-RS-") &&
+            it.endsWith("-Release.zip", ignoreCase = true)
     },
-    ModuleSpec("Tricky Addon (beta)", "KOWX712/Tricky-Addon-Update-Target-List", beta = true, preferredTag = "v5.0-beta.4") {
-        it.endsWith(".zip")
+    ModuleSpec("Tricky Addon Enhanced", "Enginex0/tricky-addon-enhanced") {
+        it.startsWith("TA_enhanced-") &&
+            it.endsWith(".zip", ignoreCase = true) &&
+            !it.contains("-debug", ignoreCase = true)
     },
     ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
         it.endsWith(".zip") && it.contains("ZYGISK") && it.contains("release")
@@ -246,7 +227,7 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
             withContext(Dispatchers.IO) {
                 modules.forEach { spec ->
                     try {
-                        appendLog("» ${spec.label}: resolving latest ${if (spec.beta) "beta " else ""}release…")
+                        appendLog("» ${spec.label}: resolving latest ${if (spec.beta) "Canary " else ""}release…")
                         val (url, tag) = AddonInstaller.resolveLatest(spec)
                         appendLog("  ${spec.label} $tag — downloading…")
                         val zip = File(
@@ -355,22 +336,7 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Hide for unlocked bootloader devices 1") }
-
-            Button(
-                onClick = dropUnlessResumed {
-                    runInstall("Hide bundle 2", HIDE_UNLOCKED_MODULES_2) {
-                        appendLog("» Tricky Addon: selecting ALL apps in target.txt…")
-                        if (AddonInstaller.selectAllAppsInTrickyTarget { appendLog("  $it") }) {
-                            appendLog("✓ target.txt updated")
-                        } else {
-                            appendLog("✗ target.txt update failed (Tricky Store missing?)")
-                        }
-                    }
-                },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Hide for unlocked bootloader devices 2") }
+            ) { Text("Hide for unlocked bootloader devices") }
 
             Button(
                 onClick = dropUnlessResumed { runGpsSpoof() },
