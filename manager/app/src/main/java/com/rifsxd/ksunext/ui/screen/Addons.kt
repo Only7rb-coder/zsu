@@ -86,6 +86,8 @@ private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
 }
 private const val GPS_SETTER_APK_URL =
     "https://github.com/Xposed-Modules-Repo/io.github.jqssun.gpssetter/releases/download/6-0.0.6/app-full-arm64-v8a-release.apk"
+private const val LEGACY_GPS_SETTER_APK_URL =
+    "https://github.com/Android1500/GpsSetter/releases/download/v1.2.9/app-release.apk"
 private const val GPS_SPOOF_LSPOSED_URL =
     "https://github.com/Only7rb-coder/zsu/releases/download/v1.0.9/LSPosed-v1.9.2-it-7460-release.zip"
 
@@ -371,6 +373,68 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
         }
     }
 
+    fun runGpsSpoof2() {
+        if (busy) return
+        scope.launch {
+            busy = true
+            log = ""
+            installProgress = 0f
+            installStatus = "Preparing GPS Spoof 2…"
+            var failed = 0
+            withContext(Dispatchers.IO) {
+                val apk = File(ksuApp.cacheDir, "gps-setter-v1.2.9.apk")
+                try {
+                    updateProgress(0.05f, "Downloading GPS Setter v1.2.9…")
+                    appendLog("» GPS Setter v1.2.9: downloading APK…")
+                    AddonInstaller.download(LEGACY_GPS_SETTER_APK_URL, apk) { downloadProgress ->
+                        updateProgress(0.05f + downloadProgress * 0.35f, "Downloading GPS Setter v1.2.9… ${(downloadProgress * 100).roundToInt()}%")
+                    }
+                    updateProgress(0.42f, "Installing GPS Setter v1.2.9…")
+                    appendLog("  installing APK through root…")
+                    if (AddonInstaller.installApk(apk) { appendLog("  $it") }) {
+                        appendLog("✓ GPS Setter v1.2.9 APK installed")
+                    } else {
+                        failed++
+                        appendLog("✗ GPS Setter v1.2.9 APK install FAILED")
+                    }
+                } catch (e: Exception) {
+                    failed++
+                    appendLog("✗ GPS Setter v1.2.9 APK: ${e.message}")
+                } finally {
+                    apk.delete()
+                }
+
+                val module = File(ksuApp.cacheDir, "LSPosed-v1.9.2-it-7460-release.zip")
+                try {
+                    updateProgress(0.52f, "Downloading LSPosed…")
+                    appendLog("» LSPosed IT v1.9.2 (7460): downloading module…")
+                    AddonInstaller.download(GPS_SPOOF_LSPOSED_URL, module) { downloadProgress ->
+                        updateProgress(0.52f + downloadProgress * 0.35f, "Downloading LSPosed… ${(downloadProgress * 100).roundToInt()}%")
+                    }
+                    updateProgress(0.9f, "Installing LSPosed…")
+                    appendLog("  installing module through ksud…")
+                    if (AddonInstaller.flashModuleZip(module) { appendLog("  $it") }) {
+                        appendLog("✓ LSPosed module installed")
+                    } else {
+                        failed++
+                        appendLog("✗ LSPosed module install FAILED")
+                    }
+                } catch (e: Exception) {
+                    failed++
+                    appendLog("✗ LSPosed module: ${e.message}")
+                } finally {
+                    module.delete()
+                }
+            }
+            busy = false
+            installProgress = 1f
+            installStatus = if (failed == 0) "GPS Spoof 2 complete" else "GPS Spoof 2 finished with $failed failure(s)"
+            snackBarHost.showSnackbar(
+                if (failed == 0) "GPS Spoof 2: done" else "GPS Spoof 2: $failed item(s) failed — see log"
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -410,6 +474,12 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("GPS Spoof") }
+
+            Button(
+                onClick = dropUnlessResumed { runGpsSpoof2() },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("GPS Spoof 2") }
 
             Button(
                 onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) },
