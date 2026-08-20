@@ -48,6 +48,8 @@ private data class ModuleSpec(
 
 private const val TEESIMULATOR_RS_V6_0_1_324_URL =
     "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.3/TEESimulator-RS-v6.0.1-324-Release.zip"
+private const val SENSITIVE_PROPS_V6_5_0_60608_URL =
+    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.4/sensitive-props-v6.5.0-60608-release.zip"
 
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
@@ -60,6 +62,14 @@ private val HIDE_UNLOCKED_MODULES = listOf(
         fixedUrl = TEESIMULATOR_RS_V6_0_1_324_URL
     ) {
         it == "TEESimulator-RS-v6.0.1-324-Release.zip"
+    },
+    ModuleSpec(
+        "Sensitive Props v6.5.0-60608",
+        "Only7rb-coder/zsu",
+        preferredTag = "v1.1.4",
+        fixedUrl = SENSITIVE_PROPS_V6_5_0_60608_URL
+    ) {
+        it == "sensitive-props-v6.5.0-60608-release.zip"
     },
     ModuleSpec("Tricky Addon Enhanced", "Enginex0/tricky-addon-enhanced") {
         it.startsWith("TA_enhanced-") &&

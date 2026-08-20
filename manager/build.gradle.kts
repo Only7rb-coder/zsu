@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for the corrective contributor and Addons progress update.
-    return 33303
+    // Release packaging override for the partner icon and Addons bundle update.
+    return 33304
 }
 
 fun getVersionName(): String {
