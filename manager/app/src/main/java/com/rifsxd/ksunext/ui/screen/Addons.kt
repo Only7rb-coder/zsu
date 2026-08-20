@@ -84,9 +84,8 @@ private val HIDE_UNLOCKED_MODULES = listOf(
 private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
     it.endsWith(".zip")
 }
-
 private const val GPS_SETTER_APK_URL =
-    "https://github.com/Android1500/GpsSetter/releases/download/v1.2.9/app-release.apk"
+    "https://github.com/Xposed-Modules-Repo/io.github.jqssun.gpssetter/releases/download/6-0.0.6/app-full-arm64-v8a-release.apk"
 private const val GPS_SPOOF_LSPOSED_URL =
     "https://github.com/Only7rb-coder/zsu/releases/download/v1.0.9/LSPosed-v1.9.2-it-7460-release.zip"
 
@@ -319,24 +318,24 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
             installStatus = "Preparing GPS Spoof…"
             var failed = 0
             withContext(Dispatchers.IO) {
-                val apk = File(ksuApp.cacheDir, "gps-setter-v1.2.9.apk")
+                val apk = File(ksuApp.cacheDir, "gps-setter-v6-0.0.6-arm64-v8a.apk")
                 try {
-                    updateProgress(0.05f, "Downloading GPS Setter…")
-                    appendLog("» GPS Setter v1.2.9: downloading APK…")
+                    updateProgress(0.05f, "Downloading GPSSetter 6-0.0.6 (arm64)…")
+                    appendLog("» GPSSetter 6-0.0.6 arm64-v8a: downloading APK…")
                     AddonInstaller.download(GPS_SETTER_APK_URL, apk) { downloadProgress ->
-                        updateProgress(0.05f + downloadProgress * 0.35f, "Downloading GPS Setter… ${(downloadProgress * 100).roundToInt()}%")
+                        updateProgress(0.05f + downloadProgress * 0.35f, "Downloading GPSSetter 6-0.0.6… ${(downloadProgress * 100).roundToInt()}%")
                     }
-                    updateProgress(0.42f, "Installing GPS Setter…")
+                    updateProgress(0.42f, "Installing GPSSetter 6-0.0.6…")
                     appendLog("  installing APK through root…")
                     if (AddonInstaller.installApk(apk) { appendLog("  $it") }) {
-                        appendLog("✓ GPS Setter APK installed")
+                        appendLog("✓ GPSSetter 6-0.0.6 APK installed")
                     } else {
                         failed++
-                        appendLog("✗ GPS Setter APK install FAILED")
+                        appendLog("✗ GPSSetter 6-0.0.6 APK install FAILED")
                     }
                 } catch (e: Exception) {
                     failed++
-                    appendLog("✗ GPS Setter APK: ${e.message}")
+                    appendLog("✗ GPSSetter 6-0.0.6 APK: ${e.message}")
                 } finally {
                     apk.delete()
                 }

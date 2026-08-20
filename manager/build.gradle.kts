@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for the partner icon and Addons bundle update.
-    return 33304
+    // Release packaging override for the GPS Spoof arm64 APK source update.
+    return 33305
 }
 
 fun getVersionName(): String {
