@@ -3,6 +3,8 @@ name: Announce published release to Telegram
 on:
   release:
     types: [published]
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -13,9 +15,14 @@ on:
         options:
           - discover_chat
           - send_test
+          - announce_latest
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: telegram-release-announcement
+  cancel-in-progress: false
 
 jobs:
   discover-chat:
@@ -45,7 +52,7 @@ jobs:
           echo "::notice title=Telegram group chat ID::$chat_id"
 
   announce-release:
-    if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'send_test') }}
+    if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'send_test' || inputs.mode == 'announce_latest')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Send the release announcement
@@ -55,18 +62,39 @@ jobs:
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_ID: ${{ github.event.release.id }}
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN" || { echo "TELEGRAM_BOT_TOKEN repository secret is required."; exit 1; }
           test -n "$TELEGRAM_CHAT_ID" || { echo "TELEGRAM_CHAT_ID repository secret is required."; exit 1; }
-          if [ "${{ github.event_name }}" = "release" ]; then
-            release_title="${RELEASE_NAME:-$RELEASE_TAG}"
-            message="ZSU Manager ${release_title} is now available.\n\nRelease: ${RELEASE_URL}\n\nOpen the release to download the normal or spoofed APK."
-          else
+          event_name="${{ github.event_name }}"
+          mode="${{ inputs.mode }}"
+          if [ "$event_name" = "workflow_dispatch" ] && [ "$mode" = "send_test" ]; then
             message="ZSU release announcements are connected. Future published ZSU releases will be posted here automatically."
+            release_id=""
+            release_body=""
+          else
+            if [ "$event_name" = "release" ]; then
+              release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+            else
+              release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest")"
+            fi
+            release_id="$(printf '%s' "$release_json" | jq -r '.id')"
+            release_title="$(printf '%s' "$release_json" | jq -r '.name // .tag_name')"
+            release_url="$(printf '%s' "$release_json" | jq -r '.html_url')"
+            release_body="$(printf '%s' "$release_json" | jq -r '.body // ""')"
+            if printf '%s' "$release_body" | grep -Fq '<!-- zsu-telegram-announced -->'; then
+              echo "Latest release was already announced."
+              exit 0
+            fi
+            message="${release_title} is now available.\n\nRelease: ${release_url}\n\nOpen the release to download the normal or spoofed APK."
           fi
           curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" \
             --data-urlencode "disable_web_page_preview=true" \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          if [ -n "$release_id" ]; then
+            marked_body="${release_body%$'\n'}"$'\n\n<!-- zsu-telegram-announced -->'
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" -f body="$marked_body" >/dev/null
+          fi
