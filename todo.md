@@ -69,3 +69,9 @@
 - [x] Diagnose why newer GitHub release APKs are not shown as available updates in the manager.
 - [x] Fix release parsing and version comparison so a newer compatible APK shows the in-app update prompt.
 - [ ] Test the in-app update detection against a real release response and a higher version code.
+- [x] Inspect the existing Android build workflow and select the automatic post-build release approach.
+- [ ] Build the required signed spoofed v1.1.8 APK variant.
+- [ ] Add automatic GitHub release publication after a successful release build.
+- [ ] Publish v1.1.8 with both signed APK variants and concise release notes.
+- [ ] Verify that v1.1.8 is detected as an available update by the manager release parser.
+- [ ] Remove the Android version-code suffix from automatic GitHub release titles while retaining it in APK filenames.

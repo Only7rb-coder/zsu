@@ -99,7 +99,8 @@ jobs:
             echo "::error::Could not parse manager version from $MANAGER_FILE"
             exit 1
           fi
-          RELEASE_TITLE="${RELEASE_NAME_INPUT:-ZSU Manager ${MANAGER_VERSION}}"
+          MANAGER_DISPLAY_VERSION=$(printf '%s' "$MANAGER_VERSION" | sed -E 's/_[0-9]+$//')
+          RELEASE_TITLE="${RELEASE_NAME_INPUT:-ZSU Manager ${MANAGER_DISPLAY_VERSION}}"
           echo "RELEASE_TITLE=$RELEASE_TITLE" >> "$GITHUB_ENV"
           echo "Manager APK version: $MANAGER_VERSION"
           echo "Release tag: $RELEASE_TAG"
