@@ -41,7 +41,7 @@
 - [x] Update Telegram announcements to upload both release APK assets and include the GitHub release download link.
 - [x] Update the Telegram workflow to send both APKs as one media-group post.
 - [x] Include the app release notes in the grouped announcement caption with the GitHub release link.
-- [ ] Verify the grouped announcement format with a user-approved test delivery.
+- [x] Verify the grouped announcement format with a user-approved test delivery.
 - [x] Audit the Home, Addons, Settings, and navigation layouts for mobile usability and visual consistency.
 - [x] Define and implement a modern visual hierarchy, spacing system, cards, and control styling across core screens.
 - [x] Build and validate the modernized manager update with normal and spoofed APKs.
