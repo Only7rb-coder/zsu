@@ -63,3 +63,9 @@
 - [x] Route the Telegram media-group announcement to the ZSU forum topic instead of General.
 - [x] Add the ZSU forum topic thread ID to the workflow delivery configuration.
 - [x] Verify one grouped release announcement in the ZSU forum topic with user approval.
+- [x] Inspect manager version values, APK asset naming, and Telegram release-title sources for the requested numbering change.
+- [x] Apply the user-approved safe version display and naming values consistently.
+- [x] Build and verify the version-aligned manager release artifacts.
+- [x] Diagnose why newer GitHub release APKs are not shown as available updates in the manager.
+- [x] Fix release parsing and version comparison so a newer compatible APK shows the in-app update prompt.
+- [ ] Test the in-app update detection against a real release response and a higher version code.

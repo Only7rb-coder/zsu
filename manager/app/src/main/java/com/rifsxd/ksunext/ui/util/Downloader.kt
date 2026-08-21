@@ -140,10 +140,12 @@ fun checkNewVersion(preferSpoofed: Boolean? = null): LatestVersionInfo {
                     }
                 }
                 
+                val newestMainApk = mainApk.maxByOrNull { it.second.toIntOrNull() ?: 0 }
+                val newestSpoofedApk = spoofedApk.maxByOrNull { it.second.toIntOrNull() ?: 0 }
                 val selectedApk = when (preferSpoofed) {
-                    true -> spoofedApk.firstOrNull() ?: mainApk.firstOrNull()
-                    false -> mainApk.firstOrNull() ?: spoofedApk.firstOrNull()
-                    null -> mainApk.firstOrNull() ?: spoofedApk.firstOrNull() // Default to main
+                    true -> newestSpoofedApk ?: newestMainApk
+                    false -> newestMainApk ?: newestSpoofedApk
+                    null -> newestMainApk ?: newestSpoofedApk // Default to normal APK
                 }
                 
                 if (selectedApk != null) {

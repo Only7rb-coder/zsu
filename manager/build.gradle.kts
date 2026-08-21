@@ -48,13 +48,13 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for the modern layout update.
-    return 33307
+    // v1.1.8 must remain higher than the published v1.1.7 build (33307)
+    // so Android and the in-app update flow recognize it as an upgrade.
+    return 33308
 }
 
 fun getVersionName(): String {
-    // ZSU: static disguised version string (ZTE widget-style), shown in App info
-    return "15.0.000.2504111533"
+    return "v1.1.8"
 }
 
 subprojects {
