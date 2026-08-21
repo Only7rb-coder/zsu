@@ -48,3 +48,8 @@
 - [x] Publish the modernized manager update with normal and spoofed APKs.
 - [x] Restyle settings toggles to match the modern card surfaces, spacing, and accent treatment used in the new layout.
 - [x] Build and verify the ZSU manager after the toggle design update.
+- [x] Remove changelog text from the grouped Telegram announcement caption.
+- [x] Present the GitHub release URL as a Download Now link in the grouped announcement caption.
+- [ ] Verify the refined Telegram caption with a user-approved delivery test.
+- [x] Restore the release changelog as plain caption text while keeping Download Now as the only release hyperlink.
+- [x] Verify the corrected plain-text changelog caption with a user-approved delivery test.
