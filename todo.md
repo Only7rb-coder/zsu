@@ -60,3 +60,6 @@
 - [x] Confirm that the Telegram bot can post to the chat identified by the new link.
 - [x] Change the protected Telegram announcement chat ID to the confirmed new destination.
 - [x] Verify one grouped release announcement at the new destination with user approval.
+- [x] Route the Telegram media-group announcement to the ZSU forum topic instead of General.
+- [x] Add the ZSU forum topic thread ID to the workflow delivery configuration.
+- [x] Verify one grouped release announcement in the ZSU forum topic with user approval.
