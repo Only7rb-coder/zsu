@@ -125,7 +125,10 @@ jobs:
             }
             release_title_html="$(printf '%s' "$release_title" | escape_html)"
             changes_html="$(printf '%s' "$changes" | escape_html)"
-            caption="<b>${release_title_html}</b>\n\nChangelog:\n${changes_html:-Release notes are available with this update.}\n\n<a href=\"${release_url}\">Download Now</a>"
+            printf -v caption '<b>%s</b>\n\nChangelog:\n%s\n\n<a href="%s">Download Now</a>' \
+              "$release_title_html" \
+              "${changes_html:-Release notes are available with this update.}" \
+              "$release_url"
             media="$(jq -nc --arg caption "$caption" '[
               {type: "document", media: "attach://normal", caption: $caption, parse_mode: "HTML"},
               {type: "document", media: "attach://spoofed"}
