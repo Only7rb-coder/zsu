@@ -807,10 +807,24 @@ private fun TopBar(
         },
         actions = {
             if (ksuVersion != null) {
-                IconButton(onClick = onInstallClick) {
+                IconButton(
+                    onClick = onInstallClick,
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.48f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Archive,
-                        contentDescription = stringResource(id = R.string.install)
+                        contentDescription = stringResource(id = R.string.install),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

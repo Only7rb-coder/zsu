@@ -55,3 +55,5 @@
 - [x] Verify the corrected plain-text changelog caption with a user-approved delivery test.
 - [x] Replace literal newline escape text with real caption line breaks in Telegram announcements.
 - [x] Verify the corrected Telegram caption line-break rendering with a user-approved delivery test.
+- [x] Redesign the Home update/download control with a modern, clear action treatment that matches the current ZSU layout.
+- [x] Build and verify the manager after the Home update/download control redesign.
