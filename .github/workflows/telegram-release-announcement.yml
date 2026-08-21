@@ -73,6 +73,7 @@ jobs:
             message="ZSU release announcements are connected. Future published ZSU releases will be posted here automatically."
             release_id=""
             release_body=""
+            release_json=""
           else
             if [ "$event_name" = "release" ]; then
               release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
@@ -88,6 +89,31 @@ jobs:
               exit 0
             fi
             message="${release_title} is now available.\n\nRelease: ${release_url}\n\nOpen the release to download the normal or spoofed APK."
+          fi
+          if [ -n "$release_id" ]; then
+            work_dir="$(mktemp -d)"
+            trap 'rm -rf "$work_dir"' EXIT
+            apk_count=0
+            while IFS= read -r asset; do
+              asset_name="$(printf '%s' "$asset" | jq -r '.name')"
+              asset_url="$(printf '%s' "$asset" | jq -r '.browser_download_url')"
+              asset_path="$work_dir/$asset_name"
+              curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+                --location --output "$asset_path" "$asset_url"
+              if printf '%s' "$asset_name" | grep -Fq 'spoofed'; then
+                variant_label="Spoofed APK"
+              else
+                variant_label="Normal APK"
+              fi
+              curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+                --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+                --form "document=@${asset_path}" \
+                --form-string "caption=${release_title} — ${variant_label}\nRelease: ${release_url}" \
+                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument"
+              apk_count=$((apk_count + 1))
+            done < <(printf '%s' "$release_json" | jq -c '.assets[] | select(.name | endswith(".apk"))')
+            test "$apk_count" -ge 2 || { echo "Expected at least two APK assets; found $apk_count."; exit 1; }
+            message="${release_title} is now available.\n\nBoth APK files are attached above.\n\nRelease download: ${release_url}"
           fi
           curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
