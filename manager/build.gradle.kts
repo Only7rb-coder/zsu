@@ -48,13 +48,13 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // v1.1.8 must remain higher than the published v1.1.7 build (33307)
+    // v1.1.9 must remain higher than the published v1.1.8 build (33308)
     // so Android and the in-app update flow recognize it as an upgrade.
-    return 33308
+    return 33309
 }
 
 fun getVersionName(): String {
-    return "v1.1.8"
+    return "v1.1.9"
 }
 
 subprojects {

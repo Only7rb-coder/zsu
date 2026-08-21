@@ -77,3 +77,5 @@
 - [x] Remove the Android version-code suffix from automatic GitHub release titles while retaining it in APK filenames.
 - [x] Replace the Home install control’s archive icon with a modern update/download symbol that matches the new ZSU interface.
 - [x] Build and verify the corrected Home install control icon treatment.
+- [x] Replace the published archive-style Home install icon with a visibly distinct download-arrow action.
+- [ ] Build and publish a new manager release containing the corrected Home install icon.

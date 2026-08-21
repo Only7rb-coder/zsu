@@ -818,13 +818,13 @@ private fun TopBar(
                             width = 1.dp,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.56f),
                             shape = RoundedCornerShape(14.dp)
-                        )
+                    )
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.SystemUpdateAlt,
+                        imageVector = Icons.Filled.Download,
                         contentDescription = stringResource(id = R.string.install),
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(25.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
