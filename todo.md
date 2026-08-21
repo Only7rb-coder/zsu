@@ -83,3 +83,5 @@
 - [x] Build and verify the manager after the premium toggle redesign.
 - [x] Remove the colored background and border from the Home install/download control while retaining the modern download icon.
 - [x] Build and verify the combined toggle and clean install-control refinements.
+- [x] Increment the manager version beyond v1.1.9 for the interface-refinement release.
+- [ ] Build and publish both v1.1.10 APK variants containing the premium toggles and clean Home install control.
