@@ -57,3 +57,6 @@
 - [x] Verify the corrected Telegram caption line-break rendering with a user-approved delivery test.
 - [x] Redesign the Home update/download control with a modern, clear action treatment that matches the current ZSU layout.
 - [x] Build and verify the manager after the Home update/download control redesign.
+- [x] Confirm that the Telegram bot can post to the chat identified by the new link.
+- [x] Change the protected Telegram announcement chat ID to the confirmed new destination.
+- [x] Verify one grouped release announcement at the new destination with user approval.
