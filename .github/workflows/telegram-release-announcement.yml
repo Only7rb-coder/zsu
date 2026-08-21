@@ -115,7 +115,17 @@ jobs:
               --location --output "$normal_path" "$normal_url"
             curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
               --location --output "$spoofed_path" "$spoofed_url"
-            caption="<b>${release_title}</b>\n\n<a href=\"${release_url}\">Download Now</a>"
+            changes="$(printf '%s' "$release_body" \
+              | sed '/<!-- zsu-telegram-announced -->/d' \
+              | sed -E '/^[[:space:]]*(\*\*)?Full Changelog(\*\*)?:/Id' \
+              | sed -E 's/\[([^][]+)\]\([^)]*\)/\1/g; s/[\*`_]//g')"
+            changes="${changes:0:620}"
+            escape_html() {
+              sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+            }
+            release_title_html="$(printf '%s' "$release_title" | escape_html)"
+            changes_html="$(printf '%s' "$changes" | escape_html)"
+            caption="<b>${release_title_html}</b>\n\nChangelog:\n${changes_html:-Release notes are available with this update.}\n\n<a href=\"${release_url}\">Download Now</a>"
             media="$(jq -nc --arg caption "$caption" '[
               {type: "document", media: "attach://normal", caption: $caption, parse_mode: "HTML"},
               {type: "document", media: "attach://spoofed"}
