@@ -61,6 +61,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_MESSAGE_THREAD_ID: "39336"
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
@@ -135,6 +136,7 @@ jobs:
             ]')"
             curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
               --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+              --form-string "message_thread_id=${TELEGRAM_MESSAGE_THREAD_ID}" \
               --form-string "media=${media}" \
               --form "normal=@${normal_path}" \
               --form "spoofed=@${spoofed_path}" \
@@ -142,6 +144,7 @@ jobs:
           else
             curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "message_thread_id=${TELEGRAM_MESSAGE_THREAD_ID}" \
               --data-urlencode "text=${message}" \
               --data-urlencode "disable_web_page_preview=true" \
               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
