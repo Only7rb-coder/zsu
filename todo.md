@@ -53,3 +53,5 @@
 - [ ] Verify the refined Telegram caption with a user-approved delivery test.
 - [x] Restore the release changelog as plain caption text while keeping Download Now as the only release hyperlink.
 - [x] Verify the corrected plain-text changelog caption with a user-approved delivery test.
+- [x] Replace literal newline escape text with real caption line breaks in Telegram announcements.
+- [x] Verify the corrected Telegram caption line-break rendering with a user-approved delivery test.
