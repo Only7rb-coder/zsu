@@ -57,6 +57,7 @@ jobs:
     steps:
       - name: Send the release announcement
         env:
+          GH_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RELEASE_NAME: ${{ github.event.release.name }}
