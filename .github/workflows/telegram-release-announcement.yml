@@ -115,11 +115,9 @@ jobs:
               --location --output "$normal_path" "$normal_url"
             curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
               --location --output "$spoofed_path" "$spoofed_url"
-            changes="$(printf '%s' "$release_body" | sed '/<!-- zsu-telegram-announced -->/d' | tr -d '\r')"
-            changes="${changes:0:700}"
-            caption="${release_title}\n\nChanges:\n${changes:-See the release page for details.}\n\nDownload: ${release_url}"
+            caption="<b>${release_title}</b>\n\n<a href=\"${release_url}\">Download Now</a>"
             media="$(jq -nc --arg caption "$caption" '[
-              {type: "document", media: "attach://normal", caption: $caption},
+              {type: "document", media: "attach://normal", caption: $caption, parse_mode: "HTML"},
               {type: "document", media: "attach://spoofed"}
             ]')"
             curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
