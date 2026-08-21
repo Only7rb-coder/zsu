@@ -811,20 +811,20 @@ private fun TopBar(
                     onClick = onInstallClick,
                     modifier = Modifier
                         .padding(end = 4.dp)
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(MaterialTheme.colorScheme.primaryContainer)
                         .border(
                             width = 1.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.48f),
-                            shape = RoundedCornerShape(16.dp)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.56f),
+                            shape = RoundedCornerShape(14.dp)
                         )
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Archive,
+                        imageVector = Icons.Filled.SystemUpdateAlt,
                         contentDescription = stringResource(id = R.string.install),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(25.dp)
                     )
                 }
             }

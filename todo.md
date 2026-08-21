@@ -75,3 +75,5 @@
 - [x] Publish v1.1.8 with both signed APK variants and concise release notes.
 - [x] Verify that v1.1.8 is detected as an available update by the manager release parser.
 - [x] Remove the Android version-code suffix from automatic GitHub release titles while retaining it in APK filenames.
+- [x] Replace the Home install control’s archive icon with a modern update/download symbol that matches the new ZSU interface.
+- [x] Build and verify the corrected Home install control icon treatment.
