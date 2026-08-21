@@ -1,0 +1,50 @@
+# Project TODO
+
+- [x] Inspect the Addons tab and verify official latest TEESimulator-RS Canary and Tricky Addon Enhanced release assets.
+- [x] Remove the second Hide Root entry from the Addons tab.
+- [x] Update the remaining Hide Root installer to use the latest TEESimulator-RS Canary build.
+- [x] Ensure the remaining Hide Root installer does not include OhMyKeymint.
+- [x] Update the Tricky Addon installer to use the latest Enhanced build.
+- [x] Delete the entire standalone Home-screen card containing only the repository and Telegram icons.
+- [x] Add repository and Telegram action buttons to the owner contributor row.
+- [x] Export the current manager icon as high-quality WebP and JPG files.
+- [x] Recreate the manager icon at genuinely high resolution to remove visible pixelation, then provide WebP and JPG copies.
+- [x] Build and validate signed full-size normal and spoofed manager APKs.
+- [x] Publish the validated Addons update in a new clean-version GitHub release.
+- [x] Diagnose the contributor-card text compression shown in the reported mobile screenshot.
+- [x] Replace the owner’s full text link buttons with compact responsive icon controls that preserve contributor text width.
+- [x] Replace the Addons installer spinner with a stage-aware loading bar and status text.
+- [x] Validate and serve the supplied TEESimulator-RS v6.0.1-324 release archive through the remaining Hide Root installer.
+- [x] Build and validate the corrective manager release with normal and spoofed APKs.
+- [x] Publish the corrective manager release with normal and spoofed APKs.
+- [x] Validate the supplied CheatNinja launcher icon and Sensitive Props v6.5.0-60608 module archive.
+- [x] Create a merged ZSU and CheatNinja launcher icon and apply it to all Android launcher icon density assets.
+- [x] Add the supplied Sensitive Props module to the first Addons installation bundle.
+- [x] Build and validate the partner update with normal and spoofed APKs.
+- [x] Publish the partner update with normal and spoofed APKs.
+- [x] Verify the specified arm64-v8a GPSSetter v6-0.0.6 APK and the current GPS Spoof installer configuration.
+- [x] Replace the GPS Spoof installer source with the specified GPSSetter arm64-v8a APK.
+- [x] Build and validate the GPS Spoof update with normal and spoofed APKs.
+- [x] Publish the GPS Spoof update with normal and spoofed APKs.
+- [x] Confirm the prior GPS Setter and LSPosed bundle sources used by the old GPS Spoof button.
+- [x] Add a GPS Spoof 2 button that installs the prior GPS Setter APK and LSPosed module while retaining the current GPS Spoof button.
+- [x] Build and validate the GPS Spoof 2 update with normal and spoofed APKs.
+- [x] Publish the GPS Spoof 2 update with normal and spoofed APKs.
+- [x] Verify the Telegram discussion destination, integration availability, and GitHub release event support for automated announcements.
+- [x] Select the GitHub Actions approach for automatic release announcements.
+- [x] Add a release-published GitHub Actions workflow to the default main branch.
+- [x] Retrieve the Telegram discussion group’s numeric chat ID through the bot without exposing its token.
+- [x] Store the Telegram bot token and target group chat ID as GitHub repository secrets.
+- [x] Verify a test announcement path and document how to maintain the automation.
+- [x] Add a release-event fallback that captures releases created through the connected GitHub integration and forwards them to the Telegram announcement workflow.
+- [x] Verify that the v1.1.7 release announcement is delivered through the fallback path.
+- [x] Update Telegram announcements to upload both release APK assets and include the GitHub release download link.
+- [x] Update the Telegram workflow to send both APKs as one media-group post.
+- [x] Include the app release notes in the grouped announcement caption with the GitHub release link.
+- [ ] Verify the grouped announcement format with a user-approved test delivery.
+- [x] Audit the Home, Addons, Settings, and navigation layouts for mobile usability and visual consistency.
+- [x] Define and implement a modern visual hierarchy, spacing system, cards, and control styling across core screens.
+- [x] Build and validate the modernized manager update with normal and spoofed APKs.
+- [x] Publish the modernized manager update with normal and spoofed APKs.
+- [x] Restyle settings toggles to match the modern card surfaces, spacing, and accent treatment used in the new layout.
+- [x] Build and verify the ZSU manager after the toggle design update.
