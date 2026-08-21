@@ -16,6 +16,7 @@ on:
           - discover_chat
           - send_test
           - announce_latest
+          - send_group_test
 
 permissions:
   contents: write
@@ -52,7 +53,7 @@ jobs:
           echo "::notice title=Telegram group chat ID::$chat_id"
 
   announce-release:
-    if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'send_test' || inputs.mode == 'announce_latest')) }}
+    if: ${{ github.event_name == 'release' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'send_test' || inputs.mode == 'announce_latest' || inputs.mode == 'send_group_test')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Send the release announcement
@@ -75,6 +76,7 @@ jobs:
             release_id=""
             release_body=""
             release_json=""
+            should_mark="false"
           else
             if [ "$event_name" = "release" ]; then
               release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
@@ -85,43 +87,55 @@ jobs:
             release_title="$(printf '%s' "$release_json" | jq -r '.name // .tag_name')"
             release_url="$(printf '%s' "$release_json" | jq -r '.html_url')"
             release_body="$(printf '%s' "$release_json" | jq -r '.body // ""')"
-            if printf '%s' "$release_body" | grep -Fq '<!-- zsu-telegram-announced -->'; then
+            if printf '%s' "$release_body" | grep -Fq '<!-- zsu-telegram-announced -->' && [ "$mode" != "send_group_test" ]; then
               echo "Latest release was already announced."
               exit 0
             fi
-            message="${release_title} is now available.\n\nRelease: ${release_url}\n\nOpen the release to download the normal or spoofed APK."
+            should_mark="true"
+            if [ "$mode" = "send_group_test" ]; then
+              should_mark="false"
+            fi
           fi
           if [ -n "$release_id" ]; then
             work_dir="$(mktemp -d)"
             trap 'rm -rf "$work_dir"' EXIT
-            apk_count=0
-            while IFS= read -r asset; do
-              asset_name="$(printf '%s' "$asset" | jq -r '.name')"
-              asset_url="$(printf '%s' "$asset" | jq -r '.browser_download_url')"
-              asset_path="$work_dir/$asset_name"
-              curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
-                --location --output "$asset_path" "$asset_url"
-              if printf '%s' "$asset_name" | grep -Fq 'spoofed'; then
-                variant_label="Spoofed APK"
-              else
-                variant_label="Normal APK"
-              fi
-              curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
-                --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
-                --form "document=@${asset_path}" \
-                --form-string "caption=${release_title} — ${variant_label}\nRelease: ${release_url}" \
-                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument"
-              apk_count=$((apk_count + 1))
-            done < <(printf '%s' "$release_json" | jq -c '.assets[] | select(.name | endswith(".apk"))')
-            test "$apk_count" -ge 2 || { echo "Expected at least two APK assets; found $apk_count."; exit 1; }
-            message="${release_title} is now available.\n\nBoth APK files are attached above.\n\nRelease download: ${release_url}"
+            normal_asset="$(printf '%s' "$release_json" | jq -c '[.assets[] | select(.name | endswith(".apk") and (contains("spoofed") | not))][0]')"
+            spoofed_asset="$(printf '%s' "$release_json" | jq -c '[.assets[] | select(.name | endswith(".apk") and contains("spoofed"))][0]')"
+            test "$normal_asset" != "null" && test "$spoofed_asset" != "null" || {
+              echo "Expected normal and spoofed APK assets."
+              exit 1
+            }
+            normal_name="$(printf '%s' "$normal_asset" | jq -r '.name')"
+            normal_url="$(printf '%s' "$normal_asset" | jq -r '.browser_download_url')"
+            spoofed_name="$(printf '%s' "$spoofed_asset" | jq -r '.name')"
+            spoofed_url="$(printf '%s' "$spoofed_asset" | jq -r '.browser_download_url')"
+            normal_path="$work_dir/$normal_name"
+            spoofed_path="$work_dir/$spoofed_name"
+            curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+              --location --output "$normal_path" "$normal_url"
+            curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+              --location --output "$spoofed_path" "$spoofed_url"
+            changes="$(printf '%s' "$release_body" | sed '/<!-- zsu-telegram-announced -->/d' | tr -d '\r')"
+            changes="${changes:0:700}"
+            caption="${release_title}\n\nChanges:\n${changes:-See the release page for details.}\n\nDownload: ${release_url}"
+            media="$(jq -nc --arg caption "$caption" '[
+              {type: "document", media: "attach://normal", caption: $caption},
+              {type: "document", media: "attach://spoofed"}
+            ]')"
+            curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 300 \
+              --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+              --form-string "media=${media}" \
+              --form "normal=@${normal_path}" \
+              --form "spoofed=@${spoofed_path}" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup"
+          else
+            curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${message}" \
+              --data-urlencode "disable_web_page_preview=true" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
           fi
-          curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" \
-            --data-urlencode "disable_web_page_preview=true" \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
-          if [ -n "$release_id" ]; then
+          if [ -n "$release_id" ] && [ "$should_mark" = "true" ]; then
             marked_body="${release_body%$'\n'}"$'\n\n<!-- zsu-telegram-announced -->'
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" -f body="$marked_body" >/dev/null
           fi
