@@ -1,15 +1,34 @@
 package com.rifsxd.ksunext.ui.component
 
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +52,6 @@ fun SwitchItem(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val switchInteractionSource = remember { MutableInteractionSource() }
     val stateAlpha = remember(checked, enabled) { Modifier.alpha(if (enabled) 1f else 0.5f) }
     val colorScheme = MaterialTheme.colorScheme
     val rowShape = RoundedCornerShape(12.dp)
@@ -93,23 +111,9 @@ fun SwitchItem(
                 }
             },
             trailingContent = {
-                Switch(
+                PremiumToggle(
                     checked = checked,
-                    enabled = enabled,
-                    onCheckedChange = onCheckedChange,
-                    interactionSource = switchInteractionSource,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = colorScheme.onPrimary,
-                        checkedTrackColor = colorScheme.primary,
-                        checkedBorderColor = colorScheme.primary,
-                        uncheckedThumbColor = colorScheme.onSurfaceVariant,
-                        uncheckedTrackColor = colorScheme.surfaceContainerHighest,
-                        uncheckedBorderColor = colorScheme.outline.copy(alpha = 0.72f),
-                        disabledCheckedThumbColor = colorScheme.onSurface.copy(alpha = 0.38f),
-                        disabledCheckedTrackColor = colorScheme.primary.copy(alpha = 0.38f),
-                        disabledUncheckedThumbColor = colorScheme.onSurface.copy(alpha = 0.24f),
-                        disabledUncheckedTrackColor = colorScheme.onSurface.copy(alpha = 0.12f)
-                    )
+                    enabled = enabled
                 )
             },
             supportingContent = {
@@ -118,6 +122,62 @@ fun SwitchItem(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PremiumToggle(
+    checked: Boolean,
+    enabled: Boolean,
+) {
+    val colors = MaterialTheme.colorScheme
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) colors.primary else colors.surfaceContainerHighest,
+        animationSpec = tween(durationMillis = 180),
+        label = "toggleTrack"
+    )
+    val trackBorder by animateColorAsState(
+        targetValue = if (checked) colors.primary.copy(alpha = 0.9f) else colors.outline.copy(alpha = 0.42f),
+        animationSpec = tween(durationMillis = 180),
+        label = "toggleBorder"
+    )
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 27.dp else 3.dp,
+        animationSpec = tween(durationMillis = 180),
+        label = "toggleThumbOffset"
+    )
+
+    Box(
+        modifier = Modifier
+            .width(58.dp)
+            .height(34.dp)
+            .clip(CircleShape)
+            .background(trackColor)
+            .border(
+                width = 1.dp,
+                color = trackBorder,
+                shape = CircleShape
+            )
+            .graphicsLayer { alpha = if (enabled) 1f else 0.48f },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Surface(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(28.dp)
+                .shadow(3.dp, CircleShape),
+            shape = CircleShape,
+            color = if (checked) colors.onPrimary else colors.surfaceContainerHigh,
+            contentColor = if (checked) colors.primary else colors.onSurfaceVariant
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Remove,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 

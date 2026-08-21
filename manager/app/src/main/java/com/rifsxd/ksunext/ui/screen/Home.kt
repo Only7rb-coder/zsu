@@ -811,14 +811,7 @@ private fun TopBar(
                     onClick = onInstallClick,
                     modifier = Modifier
                         .padding(end = 4.dp)
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.56f),
-                            shape = RoundedCornerShape(14.dp)
-                    )
+                        .size(48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Download,

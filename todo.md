@@ -79,3 +79,7 @@
 - [x] Build and verify the corrected Home install control icon treatment.
 - [x] Replace the published archive-style Home install icon with a visibly distinct download-arrow action.
 - [x] Build and publish a new manager release containing the corrected Home install icon.
+- [x] Replace the current shared settings toggle with a refined premium control that improves on/off clarity, thumb depth, and card alignment.
+- [x] Build and verify the manager after the premium toggle redesign.
+- [x] Remove the colored background and border from the Home install/download control while retaining the modern download icon.
+- [x] Build and verify the combined toggle and clean install-control refinements.
