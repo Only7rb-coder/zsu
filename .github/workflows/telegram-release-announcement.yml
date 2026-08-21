@@ -1,0 +1,72 @@
+name: Announce published release to Telegram
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Choose a safe setup or test action"
+        required: true
+        default: discover_chat
+        type: choice
+        options:
+          - discover_chat
+          - send_test
+
+permissions:
+  contents: read
+
+jobs:
+  discover-chat:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'discover_chat' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the latest Telegram group update
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN" || {
+            echo "TELEGRAM_BOT_TOKEN repository secret is required."
+            exit 1
+          }
+          response="$(curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?allowed_updates=%5B%22message%22%5D")"
+          chat_id="$(printf '%s' "$response" | jq -r '
+            .result[]
+            | select(.message.chat.type == "group" or .message.chat.type == "supergroup")
+            | .message.chat.id
+          ' | tail -n 1)"
+          test -n "$chat_id" && test "$chat_id" != "null" || {
+            echo "No group message was found. Send /start to the bot in the target group and run this action again."
+            exit 1
+          }
+          echo "::notice title=Telegram group chat ID::$chat_id"
+
+  announce-release:
+    if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'send_test') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send the release announcement
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN" || { echo "TELEGRAM_BOT_TOKEN repository secret is required."; exit 1; }
+          test -n "$TELEGRAM_CHAT_ID" || { echo "TELEGRAM_CHAT_ID repository secret is required."; exit 1; }
+          if [ "${{ github.event_name }}" = "release" ]; then
+            release_title="${RELEASE_NAME:-$RELEASE_TAG}"
+            message="ZSU Manager ${release_title} is now available.\n\nRelease: ${RELEASE_URL}\n\nOpen the release to download the normal or spoofed APK."
+          else
+            message="ZSU release announcements are connected. Future published ZSU releases will be posted here automatically."
+          fi
+          curl --fail-with-body --retry 3 --retry-all-errors --connect-timeout 20 --max-time 60 \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
