@@ -604,18 +604,19 @@ private fun BottomBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = horizontalScreenPadding, vertical = 14.dp),
+                .padding(horizontal = horizontalScreenPadding, vertical = 10.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier.wrapContentWidth(),
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 0.dp,
+                shadowElevation = 12.dp
             ) {
-                val itemSize = 56.dp
+                val itemSize = 52.dp
                 val itemSpacing = 4.dp
-                val containerPadding = 7.dp
+                val containerPadding = 8.dp
 
                 val navBarWidth = (itemSize * visibleDestinations.size) +
                         (itemSpacing * (visibleDestinations.size - 1)) +
@@ -629,7 +630,7 @@ private fun BottomBar(
                 Box(
                     modifier = Modifier
                         .width(navBarWidth)
-                        .height(72.dp)
+                        .height(68.dp)
                         .pointerInput(visibleDestinations, effectiveSelectedIndex) {
                             detectDragGestures(
                                 onDragStart = { offset ->
@@ -700,7 +701,7 @@ private fun BottomBar(
                                         .size(itemSize)
                                         .background(
                                             color = MaterialTheme.colorScheme.secondaryContainer,
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = RoundedCornerShape(18.dp)
                                         )
                                 )
                             }
@@ -728,7 +729,7 @@ private fun BottomBar(
                                         if (isSelected) destination.iconSelected else destination.iconNotSelected,
                                         stringResource(destination.label),
                                         tint = if (isSelected) {
-                                            MaterialTheme.colorScheme.primary
+                                            MaterialTheme.colorScheme.onSecondaryContainer
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
                                         }

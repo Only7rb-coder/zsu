@@ -48,8 +48,8 @@ fun getGitDescribe(): String {
 }
 
 fun getVersionCode(): Int {
-    // Release packaging override for the GPS Spoof 2 legacy bundle update.
-    return 33306
+    // Release packaging override for the modern layout update.
+    return 33307
 }
 
 fun getVersionName(): String {

@@ -13,15 +13,47 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PRIMARY,
+    primary = PRIMARY_LIGHT,
+    onPrimary = Color(0xFF2B0B4D),
+    primaryContainer = Color(0xFF32134F),
+    onPrimaryContainer = Color(0xFFF3E5FF),
     secondary = PRIMARY_DARK,
-    tertiary = SECONDARY_DARK
+    onSecondary = Color(0xFF32134F),
+    secondaryContainer = Color(0xFF30233D),
+    onSecondaryContainer = Color(0xFFF0E5F7),
+    tertiary = SECONDARY_DARK,
+    background = APP_DARK_BACKGROUND,
+    onBackground = Color(0xFFF0EDF5),
+    surface = APP_DARK_SURFACE,
+    onSurface = Color(0xFFF0EDF5),
+    surfaceVariant = APP_DARK_SURFACE_ELEVATED,
+    onSurfaceVariant = Color(0xFFD0C6D8),
+    surfaceContainerLow = Color(0xFF121017),
+    surfaceContainer = APP_DARK_SURFACE,
+    surfaceContainerHigh = APP_DARK_SURFACE_ELEVATED,
+    surfaceContainerHighest = Color(0xFF2A2236),
+    outline = APP_DARK_OUTLINE
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PRIMARY,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFF0DFFF),
+    onPrimaryContainer = Color(0xFF301049),
     secondary = PRIMARY_LIGHT,
-    tertiary = SECONDARY_LIGHT
+    secondaryContainer = Color(0xFFEFE4F3),
+    tertiary = SECONDARY_LIGHT,
+    background = APP_LIGHT_BACKGROUND,
+    onBackground = Color(0xFF1E1921),
+    surface = APP_LIGHT_SURFACE,
+    onSurface = Color(0xFF1E1921),
+    surfaceVariant = APP_LIGHT_SURFACE_ELEVATED,
+    onSurfaceVariant = Color(0xFF514957),
+    surfaceContainerLow = Color(0xFFFFFBFF),
+    surfaceContainer = APP_LIGHT_SURFACE,
+    surfaceContainerHigh = APP_LIGHT_SURFACE_ELEVATED,
+    surfaceContainerHighest = Color(0xFFEAE1F0),
+    outline = Color(0xFF807586)
 )
 
 fun Color.blend(other: Color, ratio: Float): Color {

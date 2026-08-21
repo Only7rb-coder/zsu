@@ -168,6 +168,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 Natives.isLkmMode
             }
 
+            HomeSectionHeader(
+                title = "System status",
+                subtitle = "Manager, kernel, and authorization state"
+            )
             StatusCard(
                 kernelVersion,
                 ksuVersion,
@@ -183,6 +187,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             val startRoute = homeDestination?.direction?.route
 
             if (fullFeatured) {
+                HomeSectionHeader(
+                    title = "Quick access",
+                    subtitle = "Manage permissions and installed modules"
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -266,10 +274,33 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 UpdateCard()
             }
 
+            HomeSectionHeader(
+                title = "Tools & information",
+                subtitle = "Runtime details, diagnostics, and project contacts"
+            )
             InfoCard(autoExpand = developerOptionsEnabled)
             ContributorsCard()
             Spacer(Modifier)
         }
+    }
+}
+
+@Composable
+private fun HomeSectionHeader(title: String, subtitle: String) {
+    Column(
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -835,10 +866,11 @@ private fun StatusCard(
 
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(containerColor = run {
-            if (ksuVersionParam != null && managerAuthorizedParam) MaterialTheme.colorScheme.primary
+            if (ksuVersionParam != null && managerAuthorizedParam) MaterialTheme.colorScheme.primaryContainer
             else if (ksuVersionParam != null || kernelVersionParam.isGKI()) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.errorContainer
-        })
+        }),
+        shape = RoundedCornerShape(28.dp)
     ) {
         Row(
             modifier = Modifier

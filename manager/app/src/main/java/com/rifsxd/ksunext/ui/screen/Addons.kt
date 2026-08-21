@@ -1,14 +1,19 @@
 package com.rifsxd.ksunext.ui.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -454,7 +459,23 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Button(
+            Text(
+                text = "One-tap tools",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Download and install trusted add-ons with live progress feedback.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            AddonActionCard(
+                title = "Hide for unlocked bootloader devices",
+                subtitle = "Install the complete concealment and compatibility bundle",
+                icon = Icons.Filled.VisibilityOff,
+                highlighted = true,
+                enabled = !busy,
                 onClick = dropUnlessResumed {
                     runInstall("Hide bundle", HIDE_UNLOCKED_MODULES) {
                         appendLog("» Tricky Addon: selecting ALL apps in target.txt…")
@@ -464,31 +485,39 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                             appendLog("✗ target.txt update failed (Tricky Store missing?)")
                         }
                     }
-                },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Hide for unlocked bootloader devices") }
+                }
+            )
 
-            Button(
-                onClick = dropUnlessResumed { runGpsSpoof() },
+            AddonActionCard(
+                title = "GPS Spoof",
+                subtitle = "Install GPSSetter 0.0.6 arm64-v8a and LSPosed",
+                icon = Icons.Filled.MyLocation,
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("GPS Spoof") }
+                onClick = dropUnlessResumed { runGpsSpoof() }
+            )
 
-            Button(
-                onClick = dropUnlessResumed { runGpsSpoof2() },
+            AddonActionCard(
+                title = "GPS Spoof 2",
+                subtitle = "Install the legacy GPS Setter v1.2.9 and LSPosed bundle",
+                icon = Icons.Filled.LocationSearching,
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("GPS Spoof 2") }
+                onClick = dropUnlessResumed { runGpsSpoof2() }
+            )
 
-            Button(
-                onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) },
+            AddonActionCard(
+                title = "Install BRENE",
+                subtitle = "Install the susfs companion module",
+                icon = Icons.Filled.AutoFixHigh,
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Install BRENE for susfs users") }
+                onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) }
+            )
 
             if (busy || installStatus.isNotBlank()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -502,7 +531,7 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                             Text("${(installProgress * 100).roundToInt()}%", style = MaterialTheme.typography.labelLarge)
                         }
                         LinearProgressIndicator(
-                            progress = installProgress,
+                            progress = { installProgress },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -510,7 +539,11 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
             }
 
             if (log.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                ) {
                     Text(
                         text = log,
                         modifier = Modifier.padding(12.dp),
@@ -519,6 +552,77 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AddonActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    highlighted: Boolean = false,
+    onClick: () -> Unit
+) {
+    val container = if (highlighted) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val iconContainer = if (highlighted) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val contentColor = if (highlighted) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = container,
+            contentColor = contentColor,
+            disabledContainerColor = container.copy(alpha = 0.55f),
+            disabledContentColor = contentColor.copy(alpha = 0.45f)
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (highlighted) 3.dp else 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = iconContainer,
+                contentColor = if (highlighted) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contentColor.copy(alpha = 0.76f)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = contentColor.copy(alpha = if (enabled) 0.8f else 0.35f)
+            )
         }
     }
 }
