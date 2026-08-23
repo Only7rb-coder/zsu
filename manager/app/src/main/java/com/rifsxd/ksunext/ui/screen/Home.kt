@@ -73,6 +73,7 @@ import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDe
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.rifsxd.ksunext.*
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.jailbreak.JailbreakMode
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.theme.ORANGE
 import com.rifsxd.ksunext.ui.util.*
@@ -114,6 +115,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    val jailbreakSupported = ksuVersion == null && kernelVersion.isGKI() &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getSelinuxEnforce() == false
+    var jailbreakLaunching by rememberSaveable { mutableStateOf(false) }
+    val jailbreakScope = rememberCoroutineScope()
     
     // Get scroll state for bottom bar tracking
     val bottomBarScrollState = LocalScrollState.current
@@ -169,15 +174,33 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
 
             StatusCard(
-                kernelVersion,
-                ksuVersion,
-                kernelUAPIVersion,
-                lkmMode,
+                kernelVersionParam = kernelVersion,
+                ksuVersionParam = ksuVersion,
+                uapiVerParam = kernelUAPIVersion,
+                lkmModeParam = lkmMode,
                 managerAuthorizedParam = isManager,
-                ksuVersionTagParam = ksuVersionTag
-            ) {
-                navigator.navigate(InstallScreenDestination)
-            }
+                ksuVersionTagParam = ksuVersionTag,
+                showJailbreakAction = jailbreakSupported,
+                jailbreakLaunching = jailbreakLaunching,
+                onClickJailbreak = {
+                    if (!jailbreakLaunching) {
+                        jailbreakLaunching = JailbreakMode.start(context)
+                        if (jailbreakLaunching) {
+                            Toast.makeText(context, R.string.home_jailbreak_starting, Toast.LENGTH_LONG).show()
+                            jailbreakScope.launch {
+                                delay(30_000)
+                                if (jailbreakLaunching) {
+                                    jailbreakLaunching = false
+                                    Toast.makeText(context, R.string.jailbreak_timeout, Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } else {
+                            Toast.makeText(context, R.string.home_jailbreak_unavailable, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
+                onClickInstall = { navigator.navigate(InstallScreenDestination) }
+            )
 
             val homeDestination = BottomBarDestination.entries.firstOrNull()
             val startRoute = homeDestination?.direction?.route
@@ -830,6 +853,9 @@ private fun StatusCard(
     moduleUpdateCount: Int = 0,
     managerAuthorizedParam: Boolean = true,
     ksuVersionTagParam: String? = null,
+    showJailbreakAction: Boolean = false,
+    jailbreakLaunching: Boolean = false,
+    onClickJailbreak: () -> Unit = {},
     onClickInstall: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -1001,6 +1027,22 @@ private fun StatusCard(
                             text = stringResource(R.string.home_click_to_install),
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (showJailbreakAction) {
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = onClickJailbreak,
+                                enabled = !jailbreakLaunching
+                            ) {
+                                Icon(Icons.Filled.Bolt, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(
+                                        if (jailbreakLaunching) R.string.home_jailbreak_starting
+                                        else R.string.home_jailbreak
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
 
