@@ -55,6 +55,7 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.rifsxd.ksunext.BuildConfig
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.jailbreak.JailbreakMode
 import com.rifsxd.ksunext.ui.component.*
 import com.rifsxd.ksunext.ui.util.*
 import kotlinx.coroutines.Dispatchers
@@ -502,6 +503,26 @@ private fun SecurityCard(
                 val shouldEnforce = !checked
                 if (setSelinuxEnforce(shouldEnforce)) {
                     isSelinuxPermissive = !shouldEnforce
+                }
+            }
+
+            if (runCatching { Natives.isLateLoadMode }.getOrDefault(false)) {
+                var autoJailbreakEnabled by rememberSaveable {
+                    mutableStateOf(JailbreakMode.isAutoEnabled(context))
+                }
+                SwitchItem(
+                    icon = Icons.Filled.Bolt,
+                    title = stringResource(R.string.settings_auto_jailbreak),
+                    summary = stringResource(R.string.settings_auto_jailbreak_summary),
+                    checked = autoJailbreakEnabled,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                ) { enabled ->
+                    if (JailbreakMode.setAutoEnabled(context, enabled)) {
+                        autoJailbreakEnabled = enabled
+                    } else {
+                        Toast.makeText(context, R.string.home_jailbreak_unavailable, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
 

@@ -15,10 +15,26 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.KernelSU"
-        tools:targetApi="34">
+        tools:targetApi="34"
+        android:zygotePreloadName="com.rifsxd.ksunext.jailbreak.JailbreakZygotePreload">
         <receiver
             android:name=".ui.util.ResetPropsBootReceiver"
             android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".jailbreak.JailbreakService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:useAppZygote="true" />
+
+        <receiver
+            android:name=".jailbreak.JailbreakBootReceiver"
+            android:enabled="false"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

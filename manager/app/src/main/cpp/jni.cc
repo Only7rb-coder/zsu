@@ -3,6 +3,8 @@
 #include <sys/prctl.h>
 #include <linux/capability.h>
 #include <pwd.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <android/log.h>
 #include <cstring>
@@ -100,6 +102,50 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_rifsxd_ksunext_Natives_isLateLoadMode(JNIEnv *env, jclass clazz) {
     return is_late_load_mode();
+}
+
+static void fork_dont_care_and_exec_late_load(const char* path, const char* package_name) {
+    const pid_t first_pid = fork();
+    if (first_pid < 0) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "fork for late-load failed");
+        return;
+    }
+    if (first_pid > 0) {
+        int status = 0;
+        (void)waitpid(first_pid, &status, 0);
+        return;
+    }
+
+    if (setuid(0) != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "late-load could not switch to uid 0");
+        _exit(1);
+    }
+
+    const pid_t second_pid = fork();
+    if (second_pid < 0) {
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "second fork for late-load failed");
+        _exit(1);
+    }
+    if (second_pid > 0) {
+        _exit(0);
+    }
+
+    execl(path, "ksud", "late-load", "--allow-shell", "--package-name", package_name, nullptr);
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "late-load exec failed");
+    _exit(1);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_rifsxd_ksunext_jailbreak_JailbreakZygotePreload_forkDontCareAndExecLateLoad(
+        JNIEnv* env, jclass clazz, jstring ksud_path, jstring package_name) {
+    const char* path = env->GetStringUTFChars(ksud_path, nullptr);
+    const char* package = env->GetStringUTFChars(package_name, nullptr);
+    if (path != nullptr && package != nullptr) {
+        fork_dont_care_and_exec_late_load(path, package);
+    }
+    if (path != nullptr) env->ReleaseStringUTFChars(ksud_path, path);
+    if (package != nullptr) env->ReleaseStringUTFChars(package_name, package);
 }
 
 extern "C"
