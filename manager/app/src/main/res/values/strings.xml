@@ -20,6 +20,10 @@
     <string name="home_module_update_count">Updates: %d</string>
     <string name="home_failure">Unsupported | Not integrated</string>
     <string name="home_failure_tip">Non-GKI kernels are not supported. Integrate KernelSU-Next legacy driver in your kernel!</string>
+    <string name="home_non_rooted_title">Non-rooted mode</string>
+    <string name="home_non_rooted_status">Root access is not available</string>
+    <string name="home_non_rooted_message">ZSU can still show device information and keep BL Root available. Root-only manager controls will appear when root access is available.</string>
+    <string name="home_open_bl_root">Open BL Root</string>
     <string name="home_kernel">Kernel version</string>
     <string name="hook_mode">Hook mode</string>
     <string name="enable">Enable</string>

@@ -66,6 +66,7 @@ import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.GhostlockScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
@@ -106,7 +107,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         .getOrDefault(-1)
         .takeIf { it > 0 }
     val isManager = detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+    val rootPresent = runCatching { rootAvailable() }.getOrDefault(false)
+    val fullFeatured = isManager && !Natives.requireNewKernel() && rootPresent
     val ksuVersion = detectedKernelVersion
     val ksuVersionTag = if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null
     val kernelUAPIVersion = if (detectedKernelVersion != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null
@@ -202,6 +204,12 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 onClickInstall = { navigator.navigate(InstallScreenDestination) }
             )
 
+            if (!rootPresent) {
+                NonRootedWelcomeCard(
+                    onOpenBlRoot = { navigator.navigate(GhostlockScreenDestination) }
+                )
+            }
+
             val homeDestination = BottomBarDestination.entries.firstOrNull()
             val startRoute = homeDestination?.direction?.route
 
@@ -273,7 +281,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            if (ksuVersion != null && !rootAvailable()) {
+            if (ksuVersion != null && !rootPresent) {
                 WarningCard(
                     stringResource(id = R.string.grant_root_failed),
                     onClick = {
@@ -293,6 +301,71 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             IssueReportCard()
             ContributorsCard()
             Spacer(Modifier)
+        }
+    }
+}
+
+@Composable
+private fun NonRootedWelcomeCard(onOpenBlRoot: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Security,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.home_non_rooted_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = stringResource(R.string.home_non_rooted_status),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.home_non_rooted_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Button(
+                onClick = onOpenBlRoot,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Icon(Icons.Filled.Security, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.home_open_bl_root))
+            }
         }
     }
 }
