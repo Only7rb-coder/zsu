@@ -109,6 +109,7 @@ private data class HomeStatusProbe(
 private fun rememberHomeStatusProbe(refreshKey: Int): HomeStatusProbe {
     val probe by produceState(initialValue = HomeStatusProbe(), key1 = refreshKey) {
         value = withContext(Dispatchers.IO) {
+            runCatching { Natives.refreshDriverState() }
             val detected = runCatching { Natives.version }
                 .getOrDefault(-1)
                 .takeIf { it > 0 }

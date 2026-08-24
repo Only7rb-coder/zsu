@@ -63,19 +63,59 @@ static inline int scan_driver_fd() {
     return found;
 }
 
+static inline int request_driver_fd() {
+    // The kernel installs [ksu_driver] during the manager UID transition.
+    // Ask the same reboot-hook protocol once more when a process was started
+    // before that transition or lost the inherited descriptor. The reboot
+    // syscall itself is expected to fail; the hook schedules task work that
+    // installs the descriptor before returning to userspace.
+    int requested_fd = -1;
+    (void)syscall(
+        __NR_reboot,
+        (unsigned long) KSU_INSTALL_MAGIC1,
+        (unsigned long) KSU_INSTALL_MAGIC2,
+        0UL,
+        &requested_fd
+    );
+    if (requested_fd >= 0) {
+        return requested_fd;
+    }
+    return scan_driver_fd();
+}
+
 template<typename... Args>
 static int ksuctl(unsigned long op, Args &&... args) {
 
     if (fd < 0) {
         fd = scan_driver_fd();
+        if (fd < 0) {
+            fd = request_driver_fd();
+        }
     }
 
     static_assert(sizeof...(Args) <= 1, "ioctl expects at most one extra argument");
 
-    return ioctl(fd, op, std::forward<Args>(args)...);
+    int result = ioctl(fd, op, std::forward<Args>(args)...);
+    if (result < 0 && (errno == EBADF || errno == ENOTTY || errno == EINVAL)) {
+        // A stale descriptor can survive a manager/package transition. Drop
+        // it and perform one clean reacquisition before reporting failure.
+        fd = request_driver_fd();
+        if (fd >= 0) {
+            result = ioctl(fd, op, std::forward<Args>(args)...);
+        }
+    }
+    return result;
 }
 
 static struct ksu_get_info_cmd g_version {};
+
+void reset_driver_state() {
+    if (fd >= 0) {
+        close(fd);
+        fd = -1;
+    }
+    memset(&g_version, 0, sizeof(g_version));
+}
 
 struct ksu_get_info_cmd get_info() {
     if (!g_version.version) {

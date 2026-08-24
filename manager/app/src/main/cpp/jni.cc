@@ -19,6 +19,12 @@
 #endif
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_com_rifsxd_ksunext_Natives_refreshDriverState(JNIEnv *env, jobject) {
+    reset_driver_state();
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 Java_com_rifsxd_ksunext_Natives_getVersion(JNIEnv *env, jobject) {
     int version = get_version();
