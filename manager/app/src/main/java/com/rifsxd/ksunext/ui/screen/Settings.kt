@@ -163,6 +163,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (ksuVersion != null) {
+                SettingsSectionHeader(
+                    title = "Kernel controls",
+                    subtitle = "Compatibility, logging, and runtime behavior"
+                )
                 KernelFeaturesCard(
                     suCompatStatus = suCompatStatus,
                     kernelUmountStatus = kernelUmountStatus,
@@ -174,6 +178,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     avcSpoofStatus = avcSpoofStatus,
                     scope = scope
                 )
+                SettingsSectionHeader(
+                    title = "Security & recovery",
+                    subtitle = "Protection, profiles, backups, and advanced tools"
+                )
                 SecurityCard(
                     navigator = navigator,
                     loadingDialog = loadingDialog,
@@ -182,6 +190,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 )
             }
 
+            SettingsSectionHeader(
+                title = "Application preferences",
+                subtitle = "Updates, appearance, diagnostics, and manager settings"
+            )
             AppSettingsCard(
                 navigator = navigator,
                 prefs = prefs,
@@ -194,6 +206,21 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             Spacer(Modifier)
         }
+    }
+}
+
+@Composable
+private fun SettingsSectionHeader(title: String, subtitle: String) {
+    Column(
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -218,7 +245,11 @@ private fun KernelFeaturesCard(
     // Module-managed AVC spoofing remains controllable through the manager.
     val avcSpoofSupported = avcSpoofStatus == "supported" || avcSpoofStatus == "managed"
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -505,7 +536,11 @@ private fun SecurityCard(
     scope: kotlinx.coroutines.CoroutineScope,
     context: android.content.Context
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -620,7 +655,11 @@ private fun AppSettingsCard(
     scope: kotlinx.coroutines.CoroutineScope,
     context: android.content.Context
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
