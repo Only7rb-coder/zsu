@@ -487,7 +487,7 @@ static void write_root_script(void) {
       "#!/system/bin/sh\n"
       "HOME_DIR='%s'\n"
       "LOG=\"$HOME_DIR/.ghostlock_ksu.log\"\n"
-      "KSUD=\"$HOME_DIR/ksud\"\n"
+      "KSUD=\"${GHOSTLOCK_KSUD:-$HOME_DIR/ksud}\"\n"
       "echo \"[*] root script start uid=$(id -u) euid=$(id -u)\" >\"$LOG\"\n"
       "chmod 644 \"$LOG\" 2>/dev/null\n"
       "echo \"[*] seccomp=$(grep Seccomp /proc/self/status 2>/dev/null | tr '\\n' ' ')\" >>\"$LOG\"\n"

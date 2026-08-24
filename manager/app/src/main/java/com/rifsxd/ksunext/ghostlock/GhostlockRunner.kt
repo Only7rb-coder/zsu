@@ -65,26 +65,10 @@ object GhostlockRunner {
             return Result(false, false, "Ghostlock payload is not present in this APK")
         }
 
-        val binary = File(workDir, "ghostlock")
-        try {
-            packagedBinary.inputStream().use { input -> binary.outputStream().use { output -> input.copyTo(output) } }
-            if (!binary.setExecutable(true, false)) {
-                return Result(false, false, "Unable to mark Ghostlock payload executable")
-            }
-        } catch (error: IOException) {
-            return Result(false, false, "Unable to prepare Ghostlock payload: ${error.message}")
-        }
-
+        // Native libraries are extracted to an executable filesystem location by Android.
+        // Do not copy the ELF payload into filesDir: app-private data is commonly mounted noexec.
+        val binary = packagedBinary
         val packagedKsud = File(context.applicationInfo.nativeLibraryDir, KSUD_NAME)
-        val ksud = File(workDir, "ksud")
-        if (packagedKsud.isFile) {
-            try {
-                packagedKsud.inputStream().use { input -> ksud.outputStream().use { output -> input.copyTo(output) } }
-                ksud.setExecutable(true, false)
-            } catch (error: IOException) {
-                return Result(false, false, "Unable to prepare bundled ksud: ${error.message}")
-            }
-        }
 
         val output = StringBuilder()
         val process = try {
@@ -95,6 +79,9 @@ object GhostlockRunner {
                     environment()["GHOSTLOCK_HOME"] = workDir.absolutePath
                     environment()["TMPDIR"] = workDir.absolutePath
                     environment()["HOME"] = workDir.absolutePath
+                    if (packagedKsud.isFile) {
+                        environment()["GHOSTLOCK_KSUD"] = packagedKsud.absolutePath
+                    }
                 }
                 .start()
         } catch (error: IOException) {

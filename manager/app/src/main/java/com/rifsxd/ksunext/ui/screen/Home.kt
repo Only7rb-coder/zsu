@@ -1311,7 +1311,8 @@ data class Contributor(
     val name: String? = null,
     val githubUrl: String,
     val role: String,
-    val donationUrl: String
+    val donationUrl: String,
+    val avatarRes: Int? = null
 )
 
 @Composable
@@ -1325,6 +1326,13 @@ fun ContributorsCard() {
             githubUrl = "https://github.com/Only7rb-coder",
             role = "ZSU Owner & Maintainer",
             donationUrl = "https://t.me/maroroot"
+        ),
+        Contributor(
+            login = "CheatNinja",
+            githubUrl = "https://t.me/CheatNinja_TGs_Official",
+            role = "ZSU Partner",
+            donationUrl = "https://t.me/CheatNinja_TGs_Official",
+            avatarRes = R.drawable.cheatninja_logo
         )
     )
 
@@ -1387,7 +1395,14 @@ private fun ContributorRow(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (!imageLoadFailed) {
+                if (contributor.avatarRes != null) {
+                    Image(
+                        painter = painterResource(contributor.avatarRes),
+                        contentDescription = contributor.login,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (!imageLoadFailed) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data("https://avatars.githubusercontent.com/${contributor.login}?s=80")
