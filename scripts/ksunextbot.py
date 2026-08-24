@@ -114,6 +114,20 @@ def extract_sent_message(response):
     return None
 
 
+async def refresh_sent_message(bot, message_id):
+    """Refresh a sent message so Telegram supplies its persisted reply header."""
+    for attempt in range(3):
+        try:
+            refreshed = await bot.get_messages(CHAT_ID, ids=message_id)
+        except Exception:
+            refreshed = None
+        if refreshed is not None and getattr(refreshed, "id", None) == message_id:
+            return refreshed
+        if attempt < 2:
+            await asyncio.sleep(1)
+    return None
+
+
 async def main():
     print("[+] Uploading to telegram")
     check_environ()
@@ -171,6 +185,11 @@ async def main():
                 raise RuntimeError(
                     f"Telegram did not return the uploaded message for {os.path.basename(file_path)}"
                 )
+            # The raw SendMedia response may omit the persisted reply header.
+            # Refresh the message before deciding whether Telegram threaded it.
+            refreshed_message = await refresh_sent_message(bot, sent_message.id)
+            if refreshed_message is not None:
+                sent_message = refreshed_message
             sent_reply = getattr(sent_message, "reply_to", None)
             sent_top_id = getattr(sent_reply, "reply_to_top_id", None)
             if sent_top_id is None:
