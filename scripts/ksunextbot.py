@@ -44,11 +44,15 @@ def check_environ():
     if BOT_TOKEN is None:
         print("[-] Invalid BOT_TOKEN")
         exit(1)
-    if CHAT_ID is None:
+    if not CHAT_ID or not CHAT_ID.strip():
         print("[-] Invalid CHAT_ID")
         exit(1)
     else:
-        CHAT_ID = int(CHAT_ID)
+        try:
+            CHAT_ID = int(CHAT_ID.strip())
+        except ValueError:
+            print("[-] Invalid CHAT_ID: expected an integer")
+            exit(1)
     if COMMIT_URL is None:
         print("[-] Invalid COMMIT_URL")
         exit(1)
@@ -64,11 +68,16 @@ def check_environ():
     if VERSION is None:
         print("[-] Invalid VERSION")
         exit(1)
-    if MESSAGE_THREAD_ID is None:
-        print("[-] Invaild MESSAGE_THREAD_ID")
-        exit(1)
+    # MESSAGE_THREAD_ID is optional. An empty value means upload to the chat root
+    # instead of a forum topic, which is valid for channels and non-forum chats.
+    if not MESSAGE_THREAD_ID or not MESSAGE_THREAD_ID.strip():
+        MESSAGE_THREAD_ID = None
     else:
-        MESSAGE_THREAD_ID = int(MESSAGE_THREAD_ID)
+        try:
+            MESSAGE_THREAD_ID = int(MESSAGE_THREAD_ID.strip())
+        except ValueError:
+            print("[-] Invalid MESSAGE_THREAD_ID: expected an integer when set")
+            exit(1)
 
 
 async def main():
@@ -90,13 +99,17 @@ async def main():
         print(caption)
         print("---")
         print("[+] Sending")
-        await bot.send_file(
-            entity=CHAT_ID,
-            file=files,
-            caption=caption,
-            reply_to=MESSAGE_THREAD_ID,
-            parse_mode="markdown"
-        )
+        send_kwargs = {
+            "entity": CHAT_ID,
+            "file": files,
+            "caption": caption,
+            "parse_mode": "markdown",
+        }
+        if MESSAGE_THREAD_ID is not None:
+            send_kwargs["reply_to"] = MESSAGE_THREAD_ID
+        else:
+            print("[+] No Telegram thread configured; uploading to chat root")
+        await bot.send_file(**send_kwargs)
         print("[+] Done!")
 
 if __name__ == "__main__":
