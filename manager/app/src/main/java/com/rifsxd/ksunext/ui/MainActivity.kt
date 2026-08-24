@@ -12,18 +12,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -33,9 +29,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.activity.viewModels
@@ -545,21 +538,7 @@ private fun BottomBar(
         isManager && !Natives.requireNewKernel() && rootAvailable()
     }
     val visibleDestinations = remember(fullFeatured) {
-        val destinations = BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
-        if (fullFeatured) {
-            destinations.sortedBy {
-                when (it) {
-                    BottomBarDestination.Home -> 0
-                    BottomBarDestination.Module -> 1
-                    BottomBarDestination.SuperUser -> 2
-                    BottomBarDestination.Ghostlock -> 3
-                    BottomBarDestination.Addons -> 4
-                    BottomBarDestination.Settings -> 5
-                }
-            }
-        } else {
-            destinations
-        }
+        BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()

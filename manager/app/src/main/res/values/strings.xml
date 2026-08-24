@@ -10,6 +10,18 @@
     <string name="confirm">Confirm</string>
     <string name="app_name" translatable="false">ZSU</string>
     <string name="addons" translatable="false">Addons</string>
+    <string name="manage">Manage</string>
+    <string name="manage_root_ready">Control center</string>
+    <string name="manage_root_unavailable">Limited mode</string>
+    <string name="manage_ready_title">Everything is ready</string>
+    <string name="manage_ready_message">Manage modules, superuser access, addons, and backups from one place.</string>
+    <string name="manage_non_root_title">Root access is unavailable</string>
+    <string name="manage_non_root_message">The manager is ready, but these tools need root access. BL Root remains available from the dock.</string>
+    <string name="manage_root_required">Requires root access</string>
+    <string name="manage_modules_summary">Installed modules</string>
+    <string name="manage_superuser_summary">App permissions</string>
+    <string name="manage_addons_summary">Useful tools</string>
+    <string name="manage_backup_summary">Protect your setup</string>
     <string name="home">Home</string>
     <string name="home_not_installed">Not installed</string>
     <string name="home_click_to_install">Click to install</string>
