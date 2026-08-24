@@ -1072,7 +1072,7 @@ private fun StatusCard(
                                             icon = {
                                                 Icon(
                                                     imageVector = Icons.Filled.Warning,
-                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     contentDescription = null
                                                 )
                                             },
@@ -1080,12 +1080,12 @@ private fun StatusCard(
                                                 Text(
                                                     text = stringResource(R.string.jailbreak_mode),
                                                     style = labelStyle.textStyle.copy(
-                                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     )
                                                 )
                                             },
                                             style = LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
                                             )
                                         )
                                     }
@@ -1148,7 +1148,13 @@ private fun StatusCard(
                             Spacer(Modifier.height(12.dp))
                             Button(
                                 onClick = onClickJailbreak,
-                                enabled = !jailbreakLaunching
+                                enabled = !jailbreakLaunching,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                )
                             ) {
                                 Icon(Icons.Filled.Bolt, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))

@@ -16,6 +16,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -375,22 +376,26 @@ class MainActivity : ComponentActivity() {
                                 navGraph = NavGraphs.root,
                                 navController = navController,
                                 defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                                    // Home is a dense dashboard. A short crossfade avoids measuring
-                                    // and moving two full screen layouts during tab navigation.
+                                    // Keep navigation light enough for the dense Home screen, but
+                                    // make the destination change visibly smooth instead of abrupt.
                                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                        fadeIn(animationSpec = tween(140))
+                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                     }
 
                                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                        fadeOut(animationSpec = tween(100))
+                                        fadeOut(tween(160, easing = FastOutSlowInEasing)) +
+                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160, easing = FastOutSlowInEasing))
                                     }
 
                                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                        fadeIn(animationSpec = tween(140))
+                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                     }
 
                                     override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                        fadeOut(animationSpec = tween(100))
+                                        fadeOut(tween(160, easing = FastOutSlowInEasing)) +
+                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160, easing = FastOutSlowInEasing))
                                     }
                                 }
                             )
