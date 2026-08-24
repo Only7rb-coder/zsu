@@ -57,7 +57,7 @@ class SuperUserViewModel : ViewModel() {
         val packageName: String
             get() = packageInfo.packageName
         val uid: Int
-            get() = packageInfo.applicationInfo!!.uid
+            get() = packageInfo.applicationInfo?.uid ?: -1
 
         val allowSu: Boolean
             get() = profile != null && profile.allowSu
@@ -114,7 +114,7 @@ class SuperUserViewModel : ViewModel() {
                 .toPinyinString(it.label).contains(search, true)
         }.filter {
             it.uid == 2000 // Always show shell
-                    || showSystemApps || it.packageInfo.applicationInfo!!.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
+                    || showSystemApps || (it.packageInfo.applicationInfo?.flags ?: 0).and(ApplicationInfo.FLAG_SYSTEM) == 0
         }
     }
 
@@ -133,7 +133,11 @@ class SuperUserViewModel : ViewModel() {
             }
 
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                it.resume(binder as IBinder to this)
+                if (binder == null) {
+                    it.resumeWith(Result.failure(IllegalStateException("KsuService returned a null binder")))
+                } else {
+                    it.resume(binder to this)
+                }
             }
         }
 
@@ -144,7 +148,11 @@ class SuperUserViewModel : ViewModel() {
             Shell.EXECUTOR,
             connection,
         )
-        task?.let { it1 -> Shell.getShell().execTask(it1) }
+        if (task == null) {
+            it.resumeWith(Result.failure(IllegalStateException("KsuService bind task could not be created")))
+        } else {
+            Shell.getShell().execTask(task)
+        }
     }
 
     private fun stopKsuService() {
@@ -174,12 +182,13 @@ class SuperUserViewModel : ViewModel() {
 
                 val packages = allPackages.list
 
-                apps = packages.map {
+                apps = packages.mapNotNull {
                     val appInfo = it.applicationInfo
-                    val uid = appInfo!!.uid
-                    val profile = Natives.getAppProfile(it.packageName, uid)
+                    val uid = appInfo?.uid ?: return@mapNotNull null
+                    val profile = runCatching { Natives.getAppProfile(it.packageName, uid) }.getOrNull()
                     AppInfo(
-                        label = appInfo.loadLabel(pm).toString(),
+                        label = runCatching { appInfo.loadLabel(pm).toString() }
+                            .getOrDefault(it.packageName),
                         packageInfo = it,
                         profile = profile,
                     )

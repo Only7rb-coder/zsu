@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3325
+    val minimumCommitCountForRelease = 3326
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the gray Jailbreak card and smooth tab transitions.
-    return "1.2.7"
+    // User-facing release version containing crash-hardening fixes.
+    return "1.2.8"
 }
 
 subprojects {

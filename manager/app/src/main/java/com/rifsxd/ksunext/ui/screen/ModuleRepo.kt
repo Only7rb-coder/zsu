@@ -135,8 +135,8 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
+    val isManager = runCatching { Natives.isManager }.getOrDefault(false)
+    val ksuVersion = if (isManager) runCatching { Natives.version }.getOrNull() else null
     val scrollState = LocalScrollState.current
     val isNavBarHidden = scrollState?.isScrollingDown?.value ?: false
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp

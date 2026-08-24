@@ -555,7 +555,10 @@ private fun ModuleList(
                 runCatching {
                     ksuApp.okhttpClient.newCall(
                         okhttp3.Request.Builder().url(changelogUrl).build()
-                    ).execute().body!!.string()
+                    ).execute().use { response ->
+                        response.body?.string()
+                            ?: throw IllegalStateException("Changelog response had no body")
+                    }
                 }
             }
         }

@@ -468,7 +468,9 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (iconBytes != null) {
-                    val bmp = remember(iconBytes) { BitmapFactory.decodeByteArray(iconBytes, 0, iconBytes!!.size) }
+                    val bmp = remember(iconBytes) {
+                        iconBytes?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                    }
                     bmp?.let { Image(bitmap = it.asImageBitmap(), contentDescription = null, modifier = Modifier.size(56.dp)) }
                 } else {
                     Icon(Icons.Filled.Android, contentDescription = null, modifier = Modifier.size(56.dp))

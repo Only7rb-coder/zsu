@@ -66,8 +66,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     } else null
     val snackBarHost = LocalSnackbarHost.current
 
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
+    val isManager = runCatching { Natives.isManager }.getOrDefault(false)
+    val ksuVersion = if (isManager) runCatching { Natives.version }.getOrNull() else null
 
     val scrollState = LocalScrollState.current
     val isNavBarHidden = scrollState?.isScrollingDown?.value ?: false

@@ -226,8 +226,8 @@ class MainActivity : ComponentActivity() {
             amoledModeState.value = prefsInit.getBoolean("enable_amoled", false)
         } catch (_: Exception) {}
 
-        val isManager = Natives.isManager
-        if (isManager) install()
+        val isManager = runCatching { Natives.isManager }.getOrDefault(false)
+        if (isManager) runCatching { install() }
 
         if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
             intent.extras?.clear()
@@ -247,9 +247,11 @@ class MainActivity : ComponentActivity() {
                 }
                 val navigator = navController.rememberDestinationsNavigator()
 
-                val isManager = Natives.isManager
+                val isManager = runCatching { Natives.isManager }.getOrDefault(false)
                 val fullFeatured = remember(isManager) {
-                    isManager && !Natives.requireNewKernel() && rootAvailable()
+                    isManager &&
+                        runCatching { !Natives.requireNewKernel() }.getOrDefault(false) &&
+                        runCatching { rootAvailable() }.getOrDefault(false)
                 }
 
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -279,27 +281,31 @@ class MainActivity : ComponentActivity() {
                 val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
                 LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
-                    if (moduleActionId != null) {
-                        navigator.navigate(ExecuteModuleActionScreenDestination(moduleActionId!!))
+                    val pendingModuleId = moduleActionId?.takeIf { it.isNotBlank() }
+                    if (pendingModuleId != null) {
+                        navigator.navigate(ExecuteModuleActionScreenDestination(pendingModuleId))
                         moduleActionId = null
                     }
 
-                    if (!zipUri.isNullOrEmpty()) {
-                        val uris = zipUri!!
+                    val pendingUris = zipUri?.takeIf { it.isNotEmpty() }
+                    if (pendingUris != null) {
                         val component = intent?.component?.className
-                        val flashIt = when {
-                            component?.endsWith("FlashAnyKernel") == true -> FlashIt.FlashAnyKernel(uris.first())
-                            else -> FlashIt.FlashModules(uris)
+                        val firstUri = pendingUris.firstOrNull()
+                        if (firstUri != null) {
+                            val flashIt = when {
+                                component?.endsWith("FlashAnyKernel") == true -> FlashIt.FlashAnyKernel(firstUri)
+                                else -> FlashIt.FlashModules(pendingUris)
+                            }
+                            navigator.navigate(
+                                FlashScreenDestination(flashIt = flashIt)
+                            )
                         }
-                        
-                        navigator.navigate(
-                            FlashScreenDestination(flashIt = flashIt)
-                        )
                         zipUri = null
                     }
 
-                    if (zipUri.isNullOrEmpty() && navigateLoc != null) {
-                        when (navigateLoc) {
+                    val pendingLocation = navigateLoc
+                    if (pendingUris == null && pendingLocation != null) {
+                        when (pendingLocation) {
                             NavigateLocation.SUPERUSER -> navigator.navigate(SuperUserScreenDestination) {
                                     popUpTo(NavGraphs.root.startRoute) {
                                         saveState = true
@@ -462,9 +468,11 @@ private fun BottomBar(
     lastValidSelection: MutableState<Int>
 ) {
     val navigator = navController.rememberDestinationsNavigator()
-    val isManager = remember { Natives.isManager }
+    val isManager = remember { runCatching { Natives.isManager }.getOrDefault(false) }
     val fullFeatured = remember(isManager) {
-        isManager && !Natives.requireNewKernel() && rootAvailable()
+        isManager &&
+            runCatching { !Natives.requireNewKernel() }.getOrDefault(false) &&
+            runCatching { rootAvailable() }.getOrDefault(false)
     }
     val visibleDestinations = remember(fullFeatured) {
         BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }

@@ -188,8 +188,9 @@ fun FlashScreen(
     }
 
     LaunchedEffect(confirmed, pendingFlashIt) {
-        if (confirmed && pendingFlashIt != null) {
-            FlashOperationStore.start(pendingFlashIt!!)
+        val operation = pendingFlashIt
+        if (confirmed && operation != null) {
+            FlashOperationStore.start(operation)
         }
     }
 

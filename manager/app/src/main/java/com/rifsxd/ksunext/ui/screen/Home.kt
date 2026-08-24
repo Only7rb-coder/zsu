@@ -100,6 +100,12 @@ private data class HomeStatusProbe(
     val isManager: Boolean = false,
     val rootPresent: Boolean = false,
     val managerReady: Boolean = false,
+    val requiresNewKernel: Boolean = false,
+    val uapiMismatch: Boolean = false,
+    val lkmMode: Boolean? = null,
+    val safeMode: Boolean = false,
+    val lateLoadMode: Boolean = false,
+    val suCompatDisabled: Boolean = false,
     val ksuVersionTag: String? = null,
     val kernelUAPIVersion: Int? = null,
     val managerUAPIVersion: Int = 0
@@ -113,11 +119,27 @@ private fun rememberHomeStatusProbe(refreshKey: Int): HomeStatusProbe {
             val detected = runCatching { Natives.version }
                 .getOrDefault(-1)
                 .takeIf { it > 0 }
+            val manager = detected != null && runCatching { Natives.isManager }.getOrDefault(false)
+            val requiresNewKernel = if (detected != null) {
+                runCatching { Natives.requireNewKernel() }.getOrDefault(false)
+            } else {
+                false
+            }
             HomeStatusProbe(
                 detectedKernelVersion = detected,
-                isManager = detected != null && runCatching { Natives.isManager }.getOrDefault(false),
+                isManager = manager,
                 rootPresent = runCatching { rootAvailable() }.getOrDefault(false),
-                managerReady = runCatching { !Natives.requireNewKernel() }.getOrDefault(false),
+                managerReady = !requiresNewKernel,
+                requiresNewKernel = requiresNewKernel,
+                uapiMismatch = if (detected != null) {
+                    runCatching { Natives.checkUAPIMismatch() }.getOrDefault(false)
+                } else {
+                    false
+                },
+                lkmMode = if (detected != null) runCatching { Natives.isLkmMode }.getOrNull() else null,
+                safeMode = if (detected != null) runCatching { Natives.isSafeMode }.getOrDefault(false) else false,
+                lateLoadMode = if (detected != null) runCatching { Natives.isLateLoadMode }.getOrDefault(false) else false,
+                suCompatDisabled = if (manager) runCatching { !Natives.isSuEnabled() }.getOrDefault(false) else false,
                 ksuVersionTag = if (detected != null) runCatching { Natives.getVersionTag() }.getOrNull() else null,
                 kernelUAPIVersion = if (detected != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null,
                 managerUAPIVersion = runCatching { Natives.managerUAPIVersion }.getOrDefault(0)
@@ -160,6 +182,12 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val ksuVersionTag = statusProbe.ksuVersionTag
     val kernelUAPIVersion = statusProbe.kernelUAPIVersion
     val managerUAPIVersion = statusProbe.managerUAPIVersion
+    val requiresNewKernel = statusProbe.requiresNewKernel
+    val uapiMismatch = statusProbe.uapiMismatch
+    val lkmMode = statusProbe.lkmMode
+    val safeMode = statusProbe.safeMode
+    val lateLoadMode = statusProbe.lateLoadMode
+    val suCompatDisabled = statusProbe.suCompatDisabled
 
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
@@ -218,15 +246,14 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val lkmMode = remember(ksuVersion) {
-                ksuVersion?.let { Natives.isLkmMode }
-            }
-
             StatusCard(
                 kernelVersionParam = kernelVersion,
                 ksuVersionParam = ksuVersion,
                 uapiVerParam = kernelUAPIVersion,
                 lkmModeParam = lkmMode,
+                safeModeParam = safeMode,
+                lateLoadModeParam = lateLoadMode,
+                suCompatDisabledParam = suCompatDisabled,
                 managerAuthorizedParam = isManager,
                 ksuVersionTagParam = ksuVersionTag,
                 showJailbreakAction = jailbreakSupported,
@@ -294,8 +321,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            if (isManager && Natives.requireNewKernel()) {
-                if (Natives.checkUAPIMismatch()) {
+            if (isManager && requiresNewKernel) {
+                if (uapiMismatch) {
                     WarningCard(
                         stringResource(
                             id = R.string.uapi_mismatch,
@@ -967,6 +994,9 @@ private fun StatusCard(
     ksuVersionParam: Int?,
     uapiVerParam: Int? = null,
     lkmModeParam: Boolean?,
+    safeModeParam: Boolean = false,
+    lateLoadModeParam: Boolean = false,
+    suCompatDisabledParam: Boolean = false,
     moduleUpdateCount: Int = 0,
     managerAuthorizedParam: Boolean = true,
     ksuVersionTagParam: String? = null,
@@ -1016,7 +1046,8 @@ private fun StatusCard(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     LabelItem(
-                                        icon = if (Natives.isSafeMode) {
+                                        icon = if (safeModeParam) {
+
                                             {
                                                 Icon(
                                                     imageVector = Icons.Filled.Security,
@@ -1045,7 +1076,7 @@ private fun StatusCard(
                                             containerColor = MaterialTheme.colorScheme.secondaryContainer
                                         )
                                     )
-                                    if (isSuCompatDisabled()) {
+                                    if (suCompatDisabledParam) {
                                         LabelItem(
                                             icon = {
                                                 Icon(
@@ -1067,7 +1098,7 @@ private fun StatusCard(
                                             )
                                         )
                                     }
-                                    if (Natives.isLateLoadMode) {
+                                    if (lateLoadModeParam) {
                                         LabelItem(
                                             icon = {
                                                 Icon(
@@ -1652,9 +1683,14 @@ fun handleDynamicShortcuts(context: Context, moduleConfigs: List <Pair<ModuleVie
 }
 
 fun getManagerVersion(context: Context): Pair<String, Long> {
-    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)!!
+    val packageInfo = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0)
+    }.getOrNull()
+    if (packageInfo == null) {
+        return Pair("unknown", 0L)
+    }
     val versionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
-    return Pair(packageInfo.versionName!!, versionCode)
+    return Pair(packageInfo.versionName ?: "unknown", versionCode)
 }
 
 @Preview
