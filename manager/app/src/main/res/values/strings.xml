@@ -120,10 +120,10 @@
     <string name="ghostlock_confirm_title">Run BL Root?</string>
     <string name="ghostlock_confirm_message">BL Root performs a device-specific kernel operation. A mismatched or unstable device kernel can crash or reboot the phone. Continue only if you understand the risk.</string>
     <string name="ghostlock_continue">Continue</string>
-    <string name="ghostlock_timeout">BL Root timed out. Check the output and device logs.</string>
-    <string name="ghostlock_no_output">BL Root finished without producing output.</string>
-    <string name="ghostlock_success">BL Root completed.</string>
-    <string name="ghostlock_failed">BL Root failed. Check the output above.</string>
+    <string name="ghostlock_timeout">BL Root did not finish within the allowed time. Please try again only on a supported kernel.</string>
+    <string name="ghostlock_no_output">BL Root finished.</string>
+    <string name="ghostlock_success">BL Root completed. Restart ZSU Manager to finish applying the changes.</string>
+    <string name="ghostlock_failed">BL Root did not complete. Please try again only on a supported kernel.</string>
     <string name="settings_auto_jailbreak">Auto jailbreak</string>
     <string name="settings_auto_jailbreak_summary">Automatically restart late-load root after boot. This only appears while jailbreak mode is active.</string>
     <string name="reboot_to_apply">Reboot to take effect</string>

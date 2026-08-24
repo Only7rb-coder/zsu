@@ -68,7 +68,7 @@ fun GhostlockScreen() {
     var isRunning by rememberSaveable { mutableStateOf(false) }
     var showConfirmation by rememberSaveable { mutableStateOf(false) }
     var elapsedSeconds by rememberSaveable { mutableStateOf(0) }
-    var output by rememberSaveable { mutableStateOf("") }
+    var statusMessage by rememberSaveable { mutableStateOf("") }
 
     if (showConfirmation) {
         AlertDialog(
@@ -82,13 +82,13 @@ fun GhostlockScreen() {
                         showConfirmation = false
                         isRunning = true
                         elapsedSeconds = 0
-                        output = context.getString(R.string.ghostlock_progress, 0)
+                        statusMessage = context.getString(R.string.ghostlock_progress, 0)
                         scope.launch {
                             val timerJob = launch {
                                 while (isActive) {
                                     delay(1000)
                                     elapsedSeconds += 1
-                                    output = context.getString(R.string.ghostlock_progress, elapsedSeconds)
+                                    statusMessage = context.getString(R.string.ghostlock_progress, elapsedSeconds)
                                 }
                             }
                             val runJob = async(Dispatchers.IO) {
@@ -97,10 +97,10 @@ fun GhostlockScreen() {
                             val result = runJob.await()
                             timerJob.cancel()
                             isRunning = false
-                            output = result.output.ifBlank {
-                                context.getString(
-                                    if (result.timedOut) R.string.ghostlock_timeout else R.string.ghostlock_no_output
-                                )
+                            statusMessage = when {
+                                result.success -> context.getString(R.string.ghostlock_success)
+                                result.timedOut -> context.getString(R.string.ghostlock_timeout)
+                                else -> context.getString(R.string.ghostlock_failed)
                             }
                         }
                     },
@@ -206,13 +206,12 @@ fun GhostlockScreen() {
                 )
             }
 
-            if (output.isNotBlank()) {
+            if (statusMessage.isNotBlank()) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = output,
+                        text = statusMessage,
                         modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
