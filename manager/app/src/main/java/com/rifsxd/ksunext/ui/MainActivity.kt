@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -539,48 +540,39 @@ private fun BottomBar(
     lastValidSelection: MutableState<Int>
 ) {
     val navigator = navController.rememberDestinationsNavigator()
-    val isManager = Natives.isManager
+    val isManager = remember { Natives.isManager }
     val fullFeatured = remember(isManager) {
         isManager && !Natives.requireNewKernel() && rootAvailable()
     }
-
     val visibleDestinations = remember(fullFeatured) {
-        BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
+        val destinations = BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
+        if (fullFeatured) {
+            destinations.sortedBy {
+                when (it) {
+                    BottomBarDestination.Home -> 0
+                    BottomBarDestination.Module -> 1
+                    BottomBarDestination.SuperUser -> 2
+                    BottomBarDestination.Ghostlock -> 3
+                    BottomBarDestination.Addons -> 4
+                    BottomBarDestination.Settings -> 5
+                }
+            }
+        } else {
+            destinations
+        }
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
-
     val isOnBackStack = visibleDestinations.map { destination ->
         navController.isRouteOnBackStackAsState(destination.direction).value
     }
-
-    val selectedIndex = run {
-        val exactMatch = visibleDestinations.indexOfFirst { it.direction.route == currentRoute }
-        if (exactMatch != -1) exactMatch
-        else isOnBackStack.indexOfLast { it }
-    }
-
+    val exactMatch = visibleDestinations.indexOfFirst { it.direction.route == currentRoute }
+    val selectedIndex = if (exactMatch != -1) exactMatch else isOnBackStack.indexOfLast { it }
     if (selectedIndex != -1) lastValidSelection.value = selectedIndex
-    val effectiveSelectedIndex = if (selectedIndex != -1) selectedIndex else lastValidSelection.value
+    val effectiveSelectedIndex = lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
 
-    // Drag state
-    var isDraggingPill by remember { mutableStateOf(false) }
-    var dragTargetIndex by remember { mutableStateOf(effectiveSelectedIndex) }
-
-    // During drag, animate toward dragTargetIndex; otherwise animate toward effectiveSelectedIndex
-    val animatedSelectedIndex by animateFloatAsState(
-        targetValue = (if (isDraggingPill) dragTargetIndex else effectiveSelectedIndex).toFloat(),
-        animationSpec = if (isDraggingPill) {
-            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-        } else {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-        },
-        label = "selectedIndex"
-    )
-
-    fun navigateToIndex(index: Int) {
-        val destination = visibleDestinations.getOrNull(index) ?: return
+    fun navigateTo(destination: BottomBarDestination) {
         if (destination.direction.route == currentRoute) return
         navigator.navigate(destination.direction) {
             popUpTo(NavGraphs.root.startRoute) { saveState = true }
@@ -589,159 +581,77 @@ private fun BottomBar(
         }
     }
 
-    BoxWithConstraints(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                bottom = WindowInsets.navigationBars
-                    .asPaddingValues()
-                    .calculateBottomPadding()
-            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp
     ) {
-        val screenWidth = maxWidth
-        val horizontalScreenPadding = when {
-            screenWidth > 600.dp -> 32.dp
-            screenWidth > 400.dp -> 24.dp
-            else -> 16.dp
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = horizontalScreenPadding, vertical = 14.dp),
-            contentAlignment = Alignment.Center
+        NavigationBar(
+            modifier = Modifier.height(76.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
+            tonalElevation = 0.dp
         ) {
-            Surface(
-                modifier = Modifier.wrapContentWidth(),
-                shape = RoundedCornerShape(24.dp),
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
-            ) {
-                val itemSize = 56.dp
-                val itemSpacing = 4.dp
-                val containerPadding = 7.dp
-
-                val navBarWidth = (itemSize * visibleDestinations.size) +
-                        (itemSpacing * (visibleDestinations.size - 1)) +
-                        (containerPadding * 2)
-
-                val density = LocalDensity.current
-                val itemSizePx = with(density) { itemSize.toPx() }
-                val itemSpacingPx = with(density) { itemSpacing.toPx() }
-                val containerPaddingPx = with(density) { containerPadding.toPx() }
-
-                Box(
-                    modifier = Modifier
-                        .width(navBarWidth)
-                        .height(72.dp)
-                        .pointerInput(visibleDestinations, effectiveSelectedIndex) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val extraTouchArea = with(density) { 20.dp.toPx() }
-
-                                    val pillLeft = containerPaddingPx +
-                                            effectiveSelectedIndex * (itemSizePx + itemSpacingPx) - extraTouchArea
-
-                                    val pillRight = pillLeft + itemSizePx + (extraTouchArea * 2)
-
-                                    if (offset.x in pillLeft..pillRight) {
-                                        isDraggingPill = true
-                                        dragTargetIndex = effectiveSelectedIndex
-                                    }
-                                },
-                                onDragEnd = {
-                                    if (isDraggingPill) {
-                                        navigateToIndex(dragTargetIndex)
-                                        isDraggingPill = false
-                                    }
-                                },
-                                onDragCancel = {
-                                    isDraggingPill = false
-                                },
-                                onDrag = { change, _ ->
-                                    if (isDraggingPill) {
-                                        change.consume()
-                                        // Map finger X to nearest icon index
-                                        val index = ((change.position.x - containerPaddingPx) /
-                                                (itemSizePx + itemSpacingPx))
-                                            .toInt()
-                                            .coerceIn(0, visibleDestinations.lastIndex)
-                                        dragTargetIndex = index
-                                    }
-                                }
-                            )
+            visibleDestinations.forEachIndexed { index, destination ->
+                NavigationBarItem(
+                    selected = index == effectiveSelectedIndex,
+                    onClick = { navigateTo(destination) },
+                    icon = {
+                        val icon = if (index == effectiveSelectedIndex) {
+                            destination.iconSelected
+                        } else {
+                            destination.iconNotSelected
                         }
-                ) {
-                    var totalWidth by remember { mutableStateOf(0) }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = containerPadding)
-                            .onSizeChanged { totalWidth = it.width }
-                    ) {
-                        // Sliding pill indicator
-                        if (totalWidth > 0 && visibleDestinations.isNotEmpty()) {
-                            val indicatorOffset = (itemSizePx + itemSpacingPx) * animatedSelectedIndex
-
+                        if (destination == BottomBarDestination.Ghostlock) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(vertical = 8.dp)
-                                    .offset {
-                                        IntOffset(x = indicatorOffset.toInt(), y = 0)
-                                    }
-                                    .width(itemSize)
-                                    // Subtle scale-up when dragging, like iOS
-                                    .graphicsLayer {
-                                        scaleX = if (isDraggingPill) 1.1f else 1f
-                                        scaleY = if (isDraggingPill) 1.1f else 1f
-                                    },
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (index == effectiveSelectedIndex) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        }
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(itemSize)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = stringResource(destination.label),
+                                    tint = if (index == effectiveSelectedIndex) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                 )
                             }
+                        } else {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = stringResource(destination.label)
+                            )
                         }
-                        // Navigation items
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            visibleDestinations.forEachIndexed { index, destination ->
-                                val isSelected = index == (if (isDraggingPill) dragTargetIndex else effectiveSelectedIndex)
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(itemSize)
-                                        .clip(MaterialTheme.shapes.large)
-                                        .clickable {
-                                            if (destination.direction.route == currentRoute) return@clickable
-                                            navigateToIndex(index)
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        if (isSelected) destination.iconSelected else destination.iconNotSelected,
-                                        stringResource(destination.label),
-                                        tint = if (isSelected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(destination.label),
+                            maxLines = 1,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    alwaysShowLabel = false,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
             }
         }
     }

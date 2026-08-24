@@ -50,8 +50,8 @@ fun getGitDescribe(): String {
 fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
-    // Keep release versionCodes monotonic across branch/tag history. v1.1.21 was 33314.
-    val minimumCommitCountForRelease = 3316
+    // Keep release versionCodes monotonic across branch/tag history. v1.1.23 was 33316.
+    val minimumCommitCountForRelease = 3317
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
