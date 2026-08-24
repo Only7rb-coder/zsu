@@ -15,6 +15,7 @@ COMMIT_MESSAGE = os.environ.get("COMMIT_MESSAGE")
 RUN_URL = os.environ.get("RUN_URL")
 TITLE = os.environ.get("TITLE")
 VERSION = os.environ.get("VERSION")
+EXPECTED_TOPIC_NAME = "Root ZSU"
 MSG_TEMPLATE = """
 **{title}**
 #ci_{version}
@@ -89,6 +90,36 @@ def check_environ():
         exit(1)
 
 
+async def verify_root_zsu_topic(bot):
+    """Resolve the configured topic and prove its Telegram title before sending."""
+    print(
+        f"[+] Resolving Telegram forum topic '{EXPECTED_TOPIC_NAME}' "
+        f"(message ID {MESSAGE_THREAD_ID})"
+    )
+    topic_message = await bot.get_messages(CHAT_ID, ids=MESSAGE_THREAD_ID)
+    if topic_message is None or getattr(topic_message, "id", None) != MESSAGE_THREAD_ID:
+        raise RuntimeError(
+            f"Root ZSU topic message {MESSAGE_THREAD_ID} was not found in CHAT_ID"
+        )
+    topic_action = getattr(topic_message, "action", None)
+    topic_name = getattr(topic_action, "title", None)
+    if topic_name != EXPECTED_TOPIC_NAME:
+        raise RuntimeError(
+            f"Telegram topic mismatch: expected '{EXPECTED_TOPIC_NAME}', "
+            f"got {topic_name!r} for message {MESSAGE_THREAD_ID}"
+        )
+    print(f"[+] Confirmed forum topic: {topic_name} ({MESSAGE_THREAD_ID})")
+
+
+def extract_sent_message(response):
+    """Return the message object returned by SendMediaRequest, if present."""
+    for update in getattr(response, "updates", []) or []:
+        message = getattr(update, "message", None)
+        if message is not None and getattr(message, "id", None) is not None:
+            return message
+    return None
+
+
 async def main():
     print("[+] Uploading to telegram")
     check_environ()
@@ -101,6 +132,7 @@ async def main():
     script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     session_dir = os.path.join(script_dir, "ksunextbot")
     async with await TelegramClient(session=session_dir, api_id=API_ID, api_hash=API_HASH).start(bot_token=BOT_TOKEN) as bot:
+        await verify_root_zsu_topic(bot)
         caption = [""] * len(files)
         caption[-1] = get_caption()
         print("[+] Caption: ")
@@ -131,7 +163,7 @@ async def main():
                 reply_to_msg_id=MESSAGE_THREAD_ID,
                 top_msg_id=MESSAGE_THREAD_ID,
             )
-            await bot(
+            response = await bot(
                 functions.messages.SendMediaRequest(
                     peer=CHAT_ID,
                     media=media,
@@ -140,8 +172,26 @@ async def main():
                     entities=entities,
                 )
             )
-            print(f"[+] Sent {os.path.basename(file_path)} directly to topic {MESSAGE_THREAD_ID}")
-        print("[+] Done! Topic-only upload completed")
+            sent_message = extract_sent_message(response)
+            if sent_message is None:
+                raise RuntimeError(
+                    f"Telegram did not return the uploaded message for {os.path.basename(file_path)}"
+                )
+            sent_reply = getattr(sent_message, "reply_to", None)
+            sent_top_id = getattr(sent_reply, "reply_to_top_id", None)
+            if sent_top_id is None:
+                sent_top_id = getattr(sent_reply, "top_msg_id", None)
+            sent_reply_id = getattr(sent_reply, "reply_to_msg_id", None)
+            if sent_top_id != MESSAGE_THREAD_ID or sent_reply_id != MESSAGE_THREAD_ID:
+                raise RuntimeError(
+                    f"Telegram returned a non-topic message for {os.path.basename(file_path)}: "
+                    f"reply_to_msg_id={sent_reply_id}, top_msg_id={sent_top_id}"
+                )
+            print(
+                f"[+] Sent {os.path.basename(file_path)} directly to "
+                f"Root ZSU topic {MESSAGE_THREAD_ID} as message {sent_message.id}"
+            )
+        print("[+] Done! Root ZSU topic-only upload and verification completed")
 
 
 if __name__ == "__main__":
