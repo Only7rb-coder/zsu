@@ -184,7 +184,8 @@ jobs:
           API_HASH: ${{ secrets.API_HASH }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
+          # Root ZSU topic for manager releases; the secret can override this if needed.
+          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID || '39336' }}
           COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || format('Manager build for {0}', github.sha) }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
