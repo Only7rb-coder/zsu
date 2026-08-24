@@ -204,10 +204,17 @@ async def main():
             if sent_top_id is None:
                 sent_top_id = getattr(sent_reply, "top_msg_id", None)
             sent_reply_id = getattr(sent_reply, "reply_to_msg_id", None)
-            if sent_top_id != MESSAGE_THREAD_ID or sent_reply_id != MESSAGE_THREAD_ID:
+            # Telegram may omit top_msg_id when the message directly replies to
+            # the forum topic root. The exact reply_to_msg_id still proves the
+            # message was attached to the configured Root ZSU topic; any present
+            # top_msg_id must also agree.
+            if sent_reply_id != MESSAGE_THREAD_ID or (
+                sent_top_id is not None and sent_top_id != MESSAGE_THREAD_ID
+            ):
                 raise RuntimeError(
-                    f"Telegram returned a non-topic message for {os.path.basename(file_path)}: "
-                    f"reply_to_msg_id={sent_reply_id}, top_msg_id={sent_top_id}"
+                    f"Telegram returned a message outside Root ZSU topic for "
+                    f"{os.path.basename(file_path)}: reply_to_msg_id={sent_reply_id}, "
+                    f"top_msg_id={sent_top_id}"
                 )
             print(
                 f"[+] Sent {os.path.basename(file_path)} directly to "
