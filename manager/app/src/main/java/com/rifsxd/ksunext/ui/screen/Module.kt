@@ -711,16 +711,12 @@ private fun ModuleList(
                 else -> {
                     items(viewModel.moduleList) { module ->
                         val scope = rememberCoroutineScope()
-                        val updatedModule by produceState(key1 = module.id, initialValue = Triple("", "", "")) {
-                            value = withContext(Dispatchers.IO) {
-                                viewModel.checkUpdate(module)
-                            }
-                        }
+                        val updatedModule = viewModel.cachedUpdate(module)
 
                         ModuleItem(
                             navigator = navigator,
                             module = module,
-                            updateUrl = updatedModule.first,
+                            updateUrl = updatedModule?.zipUrl.orEmpty(),
                             onUninstall = {
                                 scope.launch { onModuleUninstall(module) }
                             },

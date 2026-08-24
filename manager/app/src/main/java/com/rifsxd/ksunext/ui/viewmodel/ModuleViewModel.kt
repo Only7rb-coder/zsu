@@ -16,6 +16,7 @@ import com.rifsxd.ksunext.ui.util.listModules
 import com.rifsxd.ksunext.ui.util.zygiskRequired
 import com.rifsxd.ksunext.ui.util.isZygiskImpl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -99,6 +100,17 @@ class ModuleViewModel : ViewModel() {
     var isNeedRefresh by mutableStateOf(false)
         private set
 
+    var moduleUpdates by mutableStateOf<Map<String, ModuleUpdateInfo>>(emptyMap())
+        private set
+
+    private var updateCheckJob: Job? = null
+
+    val moduleUpdateCount by derivedStateOf {
+        moduleList.count { moduleUpdates[it.id]?.zipUrl?.isNotEmpty() == true }
+    }
+
+    fun cachedUpdate(module: ModuleInfo): ModuleUpdateInfo? = moduleUpdates[module.id]
+
     fun markNeedRefresh() {
         isNeedRefresh = true
     }
@@ -179,6 +191,34 @@ class ModuleViewModel : ViewModel() {
                 }
 
                 Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}, modules: $modules")
+            }
+            refreshModuleUpdates()
+        }
+    }
+
+    private fun refreshModuleUpdates() {
+        updateCheckJob?.cancel()
+        val snapshot = moduleList.toList()
+        if (snapshot.isEmpty()) {
+            moduleUpdates = emptyMap()
+            return
+        }
+        updateCheckJob = viewModelScope.launch(Dispatchers.IO) {
+            val results = snapshot.mapNotNull { module ->
+                val update = checkUpdate(module)
+                if (update.first.isEmpty()) {
+                    null
+                } else {
+                    module.id to ModuleUpdateInfo(
+                        version = update.second,
+                        versionCode = 0,
+                        zipUrl = update.first,
+                        changelog = update.third
+                    )
+                }
+            }.toMap()
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                moduleUpdates = results
             }
         }
     }
