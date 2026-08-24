@@ -76,8 +76,8 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
 
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
+    val isManager = runCatching { Natives.isManager }.getOrDefault(false)
+    val ksuVersion = if (isManager) runCatching { Natives.version }.getOrNull() else null
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

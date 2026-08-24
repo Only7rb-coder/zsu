@@ -131,14 +131,18 @@ object DisguiseEngine {
                     val aoff = abase + ai * asize
                     val aname = Reader(patched).apply { seek(aoff + 4) }.u32i()
                     if (tagName == "manifest" && !versionDone && aname == vcIdx) {
+                        val versionCodeValue = newVersionCode?.toInt()
+                            ?: throw DisguiseException("manifest: invalid versionCode")
                         val bb = ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                            .putInt(newVersionCode!!.toInt()).array()
+                            .putInt(versionCodeValue).array()
                         System.arraycopy(bb, 0, patched, aoff + 16, 4)
                         versionDone = true
                     }
                     if (tagName == "application" && !labelDone && aname == labelNameIdx) {
+                        val labelValue = labelIndex
+                            ?: throw DisguiseException("manifest: invalid label")
                         val bb = ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                            .putInt(labelIndex!!).array()
+                            .putInt(labelValue).array()
                         System.arraycopy(bb, 0, patched, aoff + 8, 4)
                         patched[aoff + 15] = 0x03 // TYPE_STRING
                         System.arraycopy(bb, 0, patched, aoff + 16, 4)
