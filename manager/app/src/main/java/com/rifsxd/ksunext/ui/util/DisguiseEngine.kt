@@ -271,6 +271,7 @@ object DisguiseEngine {
 
     private class IconPlan(png: ByteArray) {
         private val src = BitmapFactory.decodeByteArray(png, 0, png.size)
+            ?: throw DisguiseException("icon: selected image could not be decoded")
         fun sized(px: Int): ByteArray {
             val b = Bitmap.createScaledBitmap(src, px, px, true)
             val out = ByteArrayOutputStream(); b.compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -415,9 +416,56 @@ object DisguiseEngine {
         return f
     }
 
+    private val packageNamePattern = Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$")
+
+    fun isPackageInstalled(context: Context, packageName: String): Boolean =
+        runCatching {
+            context.packageManager.getPackageInfo(packageName, 0)
+            true
+        }.getOrDefault(false)
+
+    fun uninstallViaRoot(packageName: String): Boolean {
+        if (!packageNamePattern.matches(packageName)) return false
+        return try {
+            com.topjohnwu.superuser.Shell.cmd("pm uninstall --user 0 $packageName").exec().isSuccess
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun installViaRoot(apk: File): Boolean {
         val target = "/data/local/tmp/zsu_disguise.apk"
         val cmd = "cp '${apk.absolutePath}' $target && chmod 644 $target && pm install -r $target; rm -f $target"
+        return try {
+            com.topjohnwu.superuser.Shell.cmd(cmd).exec().isSuccess
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Install a new, unique disguised package and verify it before scheduling
+     * removal of the currently running original manager. Installed identity
+     * templates are never deleted by this operation.
+     */
+    fun installAndRemoveOriginalViaRoot(
+        apk: File,
+        targetPackageName: String,
+        originalPackageName: String
+    ): Boolean {
+        if (!packageNamePattern.matches(targetPackageName) ||
+            !packageNamePattern.matches(originalPackageName) ||
+            targetPackageName == originalPackageName
+        ) return false
+        val target = "/data/local/tmp/zsu_disguise.apk"
+        val cmd = "cp '${apk.absolutePath}' $target && chmod 644 $target && " +
+            "pm install -r $target && " +
+            "test -n \"\$(pm path $targetPackageName 2>/dev/null)\" && " +
+            "cmd package resolve-activity --brief $targetPackageName 2>/dev/null | grep -q $targetPackageName; " +
+            "rc=\$?; rm -f $target; " +
+            "if [ \"\$rc\" -eq 0 ]; then " +
+            "(sleep 2; pm uninstall --user 0 $originalPackageName >/dev/null 2>&1) >/dev/null 2>&1 & " +
+            "fi; exit \$rc"
         return try {
             com.topjohnwu.superuser.Shell.cmd(cmd).exec().isSuccess
         } catch (e: Exception) {

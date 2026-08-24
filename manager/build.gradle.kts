@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3321
+    val minimumCommitCountForRelease = 3322
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the disguised-icon fix.
-    return "1.2.2"
+    // User-facing release version containing the safe disguise transaction.
+    return "1.2.3"
 }
 
 subprojects {

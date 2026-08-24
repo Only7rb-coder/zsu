@@ -57,6 +57,9 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -92,13 +95,53 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private data class HomeStatusProbe(
+    val detectedKernelVersion: Int? = null,
+    val isManager: Boolean = false,
+    val rootPresent: Boolean = false,
+    val managerReady: Boolean = false,
+    val ksuVersionTag: String? = null,
+    val kernelUAPIVersion: Int? = null,
+    val managerUAPIVersion: Int = 0
+)
+
+@Composable
+private fun rememberHomeStatusProbe(refreshKey: Int): HomeStatusProbe {
+    val probe by produceState(initialValue = HomeStatusProbe(), key1 = refreshKey) {
+        value = withContext(Dispatchers.IO) {
+            val detected = runCatching { Natives.version }
+                .getOrDefault(-1)
+                .takeIf { it > 0 }
+            HomeStatusProbe(
+                detectedKernelVersion = detected,
+                isManager = detected != null && runCatching { Natives.isManager }.getOrDefault(false),
+                rootPresent = runCatching { rootAvailable() }.getOrDefault(false),
+                managerReady = runCatching { !Natives.requireNewKernel() }.getOrDefault(false),
+                ksuVersionTag = if (detected != null) runCatching { Natives.getVersionTag() }.getOrNull() else null,
+                kernelUAPIVersion = if (detected != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null,
+                managerUAPIVersion = runCatching { Natives.managerUAPIVersion }.getOrDefault(0)
+            )
+        }
+    }
+    return probe
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
-    // These values are stable for the lifetime of the Home destination. Keeping
-    // probes out of ordinary recomposition prevents tab returns and scroll updates
-    // from repeating JNI, shell, and preference work.
+    // Keep expensive JNI/root probes off the render path, but refresh them when
+    // Home resumes so install, disguise, and driver changes are reflected.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var refreshKey by remember { mutableIntStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshKey++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val statusProbe = rememberHomeStatusProbe(refreshKey)
     val kernelVersion = remember { getKernelVersion() }
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
@@ -107,27 +150,15 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     // flashed boot image can expose the driver before the installed APK is
     // recognized as the trusted manager, so never report that state as
     // "not installed".
-    val detectedKernelVersion = remember {
-        runCatching { Natives.version }
-            .getOrDefault(-1)
-            .takeIf { it > 0 }
-    }
-    val isManager = remember(detectedKernelVersion) {
-        detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
-    }
-    val rootPresent = remember { runCatching { rootAvailable() }.getOrDefault(false) }
-    val managerReady = remember { runCatching { !Natives.requireNewKernel() }.getOrDefault(false) }
-    val fullFeatured = remember(isManager, managerReady, rootPresent) {
-        isManager && managerReady && rootPresent
-    }
+    val detectedKernelVersion = statusProbe.detectedKernelVersion
+    val isManager = statusProbe.isManager
+    val rootPresent = statusProbe.rootPresent
+    val managerReady = statusProbe.managerReady
+    val fullFeatured = isManager && managerReady && rootPresent
     val ksuVersion = detectedKernelVersion
-    val ksuVersionTag = remember(detectedKernelVersion) {
-        if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null
-    }
-    val kernelUAPIVersion = remember(detectedKernelVersion) {
-        if (detectedKernelVersion != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null
-    }
-    val managerUAPIVersion = remember { runCatching { Natives.managerUAPIVersion }.getOrDefault(0) }
+    val ksuVersionTag = statusProbe.ksuVersionTag
+    val kernelUAPIVersion = statusProbe.kernelUAPIVersion
+    val managerUAPIVersion = statusProbe.managerUAPIVersion
 
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
@@ -307,7 +338,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 UpdateCard()
             }
 
-            InfoCard(autoExpand = developerOptionsEnabled)
+            InfoCard(
+                autoExpand = developerOptionsEnabled,
+                detectedKernelVersion = detectedKernelVersion
+            )
             ContributorsCard()
             Spacer(Modifier)
         }
@@ -1176,14 +1210,14 @@ fun WarningCard(
 }
 
 @Composable
-private fun InfoCard(autoExpand: Boolean = false) {
+private fun InfoCard(
+    autoExpand: Boolean = false,
+    detectedKernelVersion: Int? = null
+) {
     val context = LocalContext.current
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    val detectedKernelVersion = runCatching { Natives.version }
-        .getOrDefault(-1)
-        .takeIf { it > 0 }
     val ksuVersion = detectedKernelVersion
 
     var expanded by rememberSaveable { mutableStateOf(false) }
