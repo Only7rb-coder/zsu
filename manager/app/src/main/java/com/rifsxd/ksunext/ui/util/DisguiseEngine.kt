@@ -433,6 +433,17 @@ object DisguiseEngine {
         }
     }
 
+    fun scheduleUninstallViaRoot(packageName: String, delaySeconds: Int = 3): Boolean {
+        if (!packageNamePattern.matches(packageName) || delaySeconds < 1) return false
+        return try {
+            com.topjohnwu.superuser.Shell.cmd(
+                "(sleep $delaySeconds; pm uninstall --user 0 $packageName >/dev/null 2>&1) >/dev/null 2>&1 &"
+            ).exec().isSuccess
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun installViaRoot(apk: File): Boolean {
         val target = "/data/local/tmp/zsu_disguise.apk"
         val cmd = "cp '${apk.absolutePath}' $target && chmod 644 $target && pm install -r $target; rm -f $target"
@@ -444,28 +455,17 @@ object DisguiseEngine {
     }
 
     /**
-     * Install a new, unique disguised package and verify it before scheduling
-     * removal of the currently running original manager. Installed identity
-     * templates are never deleted by this operation.
+     * Install and minimally verify a new package. This function never removes
+     * an existing package; callers must perform launch verification separately
+     * and invoke uninstallViaRoot only after that succeeds.
      */
-    fun installAndRemoveOriginalViaRoot(
-        apk: File,
-        targetPackageName: String,
-        originalPackageName: String
-    ): Boolean {
-        if (!packageNamePattern.matches(targetPackageName) ||
-            !packageNamePattern.matches(originalPackageName) ||
-            targetPackageName == originalPackageName
-        ) return false
+    fun installAndVerifyViaRoot(apk: File, targetPackageName: String): Boolean {
+        if (!packageNamePattern.matches(targetPackageName)) return false
         val target = "/data/local/tmp/zsu_disguise.apk"
         val cmd = "cp '${apk.absolutePath}' $target && chmod 644 $target && " +
             "pm install -r $target && " +
-            "test -n \"\$(pm path $targetPackageName 2>/dev/null)\" && " +
-            "cmd package resolve-activity --brief $targetPackageName 2>/dev/null | grep -q $targetPackageName; " +
-            "rc=\$?; rm -f $target; " +
-            "if [ \"\$rc\" -eq 0 ]; then " +
-            "(sleep 2; pm uninstall --user 0 $originalPackageName >/dev/null 2>&1) >/dev/null 2>&1 & " +
-            "fi; exit \$rc"
+            "test -n \"\$(pm path $targetPackageName 2>/dev/null)\"; " +
+            "rc=\$?; rm -f $target; exit \$rc"
         return try {
             com.topjohnwu.superuser.Shell.cmd(cmd).exec().isSuccess
         } catch (e: Exception) {

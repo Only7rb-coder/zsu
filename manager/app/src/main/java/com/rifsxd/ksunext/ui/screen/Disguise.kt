@@ -1,6 +1,8 @@
 package com.rifsxd.ksunext.ui.screen
 
+import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -10,11 +12,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -35,6 +44,157 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+
+@Composable
+private fun DisguiseTargetPickerDialog(
+    targets: List<ApplicationInfo>,
+    packageManager: PackageManager,
+    selectedPackageName: String?,
+    onSelect: (ApplicationInfo) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val filteredTargets = remember(targets, query) {
+        val normalized = query.trim().lowercase()
+        if (normalized.isEmpty()) targets else targets.filter { app ->
+            app.packageName.lowercase().contains(normalized) ||
+                app.loadLabel(packageManager).toString().lowercase().contains(normalized)
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text("Choose identity template", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Search by app name or package. This copies the visible identity only; it does not remove the selected app.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search installed apps") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                    }
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "${filteredTargets.size} of ${targets.size} launchable apps",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(8.dp))
+                if (filteredTargets.isEmpty()) {
+                    Text(
+                        "No matching launchable apps. Try another name or package.",
+                        modifier = Modifier.padding(vertical = 28.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 440.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(filteredTargets, key = { it.packageName }) { app ->
+                            val isSelected = app.packageName == selectedPackageName
+                            val iconBytes = remember(app.packageName) {
+                                drawableToPng(app.loadIcon(packageManager))
+                            }
+                            val bitmap = remember(iconBytes) {
+                                iconBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                            }
+                            Surface(
+                                onClick = { onSelect(app) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.large,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(44.dp)
+                                        )
+                                    } else {
+                                        Icon(Icons.Filled.Android, contentDescription = null, modifier = Modifier.size(44.dp))
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            app.loadLabel(packageManager).toString(),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            app.packageName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (isSelected) {
+                                        Icon(Icons.Filled.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                }
+            }
+        }
+    }
+}
+
+private fun suggestedPackageName(
+    templatePackageName: String,
+    currentPackageName: String,
+    packageManager: PackageManager
+): String {
+    val suffixes = listOf("zsu", "manager", "clone", "copy")
+    suffixes.forEach { suffix ->
+        val candidate = "$templatePackageName.$suffix"
+        val exists = runCatching {
+            packageManager.getPackageInfo(candidate, 0)
+            true
+        }.getOrDefault(false)
+        if (candidate != currentPackageName && candidate.length <= 240 && !exists) return candidate
+    }
+    val hash = Integer.toUnsignedString(templatePackageName.hashCode(), 16)
+    return "com.zsu.disguise.app$hash"
+}
 
 private fun normalizeToPng(bytes: ByteArray): ByteArray? {
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
@@ -89,14 +249,16 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
     var iconBytes by remember { mutableStateOf<ByteArray?>(null) }
     var pkgError by remember { mutableStateOf<String?>(null) }
     var selectedTargetPackage by rememberSaveable { mutableStateOf<String?>(null) }
-    var targetMenuExpanded by remember { mutableStateOf(false) }
+    var targetPickerOpen by rememberSaveable { mutableStateOf(false) }
     var pendingTargetPackage by remember { mutableStateOf<String?>(null) }
 
     val disguiseTargets = remember {
-        pm.getInstalledApplications(0)
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_ALL)
             .asSequence()
+            .mapNotNull { it.activityInfo?.applicationInfo }
             .filter { it.packageName != curPkg }
-            .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+            .distinctBy { it.packageName }
             .sortedBy { it.loadLabel(pm).toString().lowercase() }
             .toList()
     }
@@ -105,11 +267,12 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
     fun applyTarget(app: ApplicationInfo) {
         val label = app.loadLabel(pm).toString().ifBlank { app.packageName }
         selectedTargetPackage = app.packageName
-        pkg = app.packageName
+        pkg = suggestedPackageName(app.packageName, curPkg, pm)
         appName = label
+
         iconBytes = drawableToPng(app.loadIcon(pm))
         pkgError = null
-        targetMenuExpanded = false
+        targetPickerOpen = false
     }
 
     val iconPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -121,9 +284,9 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
     }
 
     fun validPkg(p: String) = Regex("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$").matches(p)
-    val targetAlreadyInstalled by produceState(initialValue = false, key1 = pkg) {
+    val targetInstallState by produceState<Boolean?>(initialValue = null, key1 = pkg) {
         value = if (pkg == curPkg) {
-            false
+            true
         } else {
             withContext(Dispatchers.IO) {
                 DisguiseEngine.isPackageInstalled(context, pkg)
@@ -136,32 +299,51 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
         scope.launch {
             loadingDialog.show()
             val result = withContext(Dispatchers.IO) {
+                var apk: java.io.File? = null
                 try {
-                    val apk = DisguiseEngine.disguise(
+                    apk = DisguiseEngine.disguise(
                         context,
                         DisguiseEngine.Params(targetPackageName, appName, versionName, vc, iconBytes)
                     )
-                    val transactionStarted = DisguiseEngine.installAndRemoveOriginalViaRoot(
-                        apk = apk,
-                        targetPackageName = targetPackageName,
-                        originalPackageName = curPkg
-                    )
-                    val verified = transactionStarted &&
-                        DisguiseEngine.isPackageInstalled(context, targetPackageName) &&
-                        context.packageManager.getLaunchIntentForPackage(targetPackageName) != null
-                    apk.delete()
-                    if (verified) {
-                        "New package $targetPackageName verified. The original $curPkg will be removed shortly; open the new app from the launcher."
+                    val installed = DisguiseEngine.installAndVerifyViaRoot(apk, targetPackageName)
+                    if (!installed) {
+                        "Install failed or the new package was not visible to Package Manager. The original manager was kept."
                     } else {
-                        "Install verification failed. The original manager was kept. APK was removed after the failed verification."
+                        val installedInfo = runCatching {
+                            context.packageManager.getApplicationInfo(targetPackageName, 0)
+                        }.getOrNull()
+                        val installedLabel = installedInfo?.let { context.packageManager.getApplicationLabel(it).toString() }
+                        val launchable = context.packageManager.getLaunchIntentForPackage(targetPackageName) != null
+                        val identityVerified = installedInfo != null &&
+                            installedLabel == appName &&
+                            launchable
+                        if (!identityVerified) {
+                            "The package installed but verification failed (label or launch activity). The original manager was kept."
+                        } else if (!DisguiseEngine.scheduleUninstallViaRoot(curPkg, delaySeconds = 5)) {
+                            "New package $targetPackageName is verified, but removal of the original manager could not be scheduled. The original was kept."
+                        } else {
+                            "New package $targetPackageName is verified and launchable. The original manager will be removed in 5 seconds; open the new app from the launcher."
+                        }
                     }
                 } catch (e: Exception) {
-                    "Disguise failed: ${e.message ?: "unknown error"}"
+                    "Disguise failed: ${e.message ?: "unknown error"}. The original manager was kept."
+                } finally {
+                    apk?.delete()
                 }
             }
             loadingDialog.hide()
             snackBarHost.showSnackbar(result)
         }
+    }
+
+    if (targetPickerOpen) {
+        DisguiseTargetPickerDialog(
+            targets = disguiseTargets,
+            packageManager = pm,
+            selectedPackageName = selectedTargetPackage,
+            onSelect = ::applyTarget,
+            onDismiss = { targetPickerOpen = false }
+        )
     }
 
     Scaffold(
@@ -188,41 +370,58 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            Box {
-                OutlinedButton(onClick = { targetMenuExpanded = true }) {
-                    Text(selectedTarget?.loadLabel(pm)?.toString() ?: "Choose installed app")
-                }
-                DropdownMenu(
-                    expanded = targetMenuExpanded,
-                    onDismissRequest = { targetMenuExpanded = false }
+            OutlinedCard(
+                onClick = { targetPickerOpen = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (disguiseTargets.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("No launchable user apps found") },
-                            onClick = { targetMenuExpanded = false },
-                            enabled = false
+                    val selectedIcon = selectedTarget?.let { app ->
+                        remember(app.packageName) { drawableToPng(app.loadIcon(pm)) }
+                    }
+                    val selectedBitmap = remember(selectedIcon) {
+                        selectedIcon?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                    }
+                    if (selectedBitmap != null) {
+                        Image(
+                            bitmap = selectedBitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(52.dp)
                         )
                     } else {
-                        disguiseTargets.forEach { app ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(app.loadLabel(pm).toString())
-                                        Text(app.packageName, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                },
-                                onClick = { applyTarget(app) }
-                            )
-                        }
+                        Icon(Icons.Filled.Android, contentDescription = null, modifier = Modifier.size(52.dp))
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            selectedTarget?.loadLabel(pm)?.toString() ?: "Choose an installed app",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            selectedTarget?.packageName ?: "Search by name or package",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(onClick = { targetPickerOpen = true }) {
+                        Text(if (selectedTarget == null) "Choose" else "Change")
                     }
                 }
             }
 
             selectedTarget?.let { app ->
                 Text(
-                    "Selected: ${app.packageName}",
+                    "Template: ${app.loadLabel(pm)} (${app.packageName})",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "New target package: $pkg",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -234,7 +433,7 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                 },
                 label = { Text("Package name") },
                 isError = pkgError != null,
-                supportingText = { pkgError?.let { Text(it) } ?: Text("Current: $curPkg") },
+                supportingText = { pkgError?.let { Text(it) } ?: Text("Must be unused; current manager: $curPkg") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -285,6 +484,10 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
                         pkgError = "Invalid package name (e.g. com.example.app)"
                     } else if (pkg == curPkg) {
                         pkgError = "Choose a new package name; it cannot be the current ZSU package"
+                    } else if (targetInstallState == null) {
+                        pkgError = "Still checking whether this package is available"
+                    } else if (targetInstallState == true) {
+                        pkgError = "This package is already installed; choose a different target package"
                     } else {
                         pendingTargetPackage = pkg
                     }
@@ -309,16 +512,12 @@ fun DisguiseScreen(navigator: DestinationsNavigator) {
             title = { Text("Replace the current manager safely?") },
             text = {
                 Text(
-                    if (targetAlreadyInstalled && targetPackageName == pkg) {
-                        "The selected package is already installed. It will not be deleted automatically. Choose a different, unused package name before continuing."
-                    } else {
-                        "ZSU will build and install $targetPackageName, verify that it is launchable, and only then remove the original $curPkg. If installation or verification fails, the original manager remains available."
-                    }
+                    "ZSU will build and install $targetPackageName, verify its package, label, and launch activity, and only then remove the original $curPkg. The selected identity-template app is never deleted. If installation or verification fails, the original manager remains available."
                 )
             },
             confirmButton = {
                 TextButton(
-                    enabled = !(targetAlreadyInstalled && targetPackageName == pkg),
+                    enabled = targetInstallState == false && targetPackageName == pkg,
                     onClick = {
                         pendingTargetPackage = null
                         startDisguise(targetPackageName)
