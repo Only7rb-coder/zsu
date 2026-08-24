@@ -50,14 +50,14 @@ fun getGitDescribe(): String {
 fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
-    // v1.1.26 used 33318; the v1.2.0 correction must install as a newer build.
-    val minimumCommitCountForRelease = 3319
+    // Keep every published APK installable over the previous release.
+    val minimumCommitCountForRelease = 3320
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // User-facing release version for the v1.2.0 manager redesign.
-    return "1.2.0"
+    // User-facing release version after removing unverified S948 support.
+    return "1.2.1"
 }
 
 subprojects {
