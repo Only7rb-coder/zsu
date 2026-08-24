@@ -30,24 +30,61 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ui.component.KeyEventBlocker
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.runModuleAction
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+private object ModuleActionOperationStore {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var operationJob: Job? = null
+    val text = mutableStateOf("")
+    val logContent = mutableStateOf("")
+    val isRunning = mutableStateOf(false)
+
+    fun start(moduleId: String) {
+        if (operationJob?.isActive == true) return
+        text.value = ""
+        logContent.value = ""
+        isRunning.value = true
+        operationJob = scope.launch {
+            withContext(Dispatchers.IO) {
+                runModuleAction(
+                    moduleId = moduleId,
+                    onStdout = { line ->
+                        val output = "$line\n"
+                        text.value = if (output.startsWith("\u001b[H\u001b[J")) {
+                            output.substring(6)
+                        } else {
+                            text.value + output
+                        }
+                        logContent.value += output
+                    },
+                    onStderr = { line ->
+                        logContent.value += "$line\n"
+                    }
+                )
+            }
+            isRunning.value = false
+            operationJob = null
+        }
+    }
+}
+
 @Composable
 @Destination<RootGraph>
 fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String) {
-    var text by rememberSaveable { mutableStateOf("") }
-    var tempText: String
-    val logContent = rememberSaveable { StringBuilder() }
+    val text by ModuleActionOperationStore.text
+    val logContent by ModuleActionOperationStore.logContent
+    val isActionRunning by ModuleActionOperationStore.isRunning
     val snackBarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    var actionResult: Boolean
-    var isActionRunning by rememberSaveable { mutableStateOf(true) }
 
     val context = LocalContext.current
     // Read developer options from SharedPreferences
@@ -66,30 +103,8 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
         // Disable back button if action is running
     }
 
-    LaunchedEffect(Unit) {
-        if (text.isNotEmpty()) {
-            return@LaunchedEffect
-        }
-        withContext(Dispatchers.IO) {
-            runModuleAction(
-                moduleId = moduleId,
-                onStdout = {
-                    tempText = "$it\n"
-                    if (tempText.startsWith("[H[J")) { // clear command
-                        text = tempText.substring(6)
-                    } else {
-                        text += tempText
-                    }
-                    logContent.append(it).append("\n")
-                },
-                onStderr = {
-                    logContent.append(it).append("\n")
-                }
-            ).let {
-                actionResult = it
-            }
-        }
-        isActionRunning = false
+    LaunchedEffect(moduleId) {
+        ModuleActionOperationStore.start(moduleId)
     }
 
     Scaffold(
@@ -108,7 +123,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                                 "KernelSU_Next_module_action_log_${date}.log"
                             )
-                            file.writeText(logContent.toString())
+                            file.writeText(logContent)
                             snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
                         }
                     }

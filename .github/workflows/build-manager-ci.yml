@@ -169,7 +169,8 @@ jobs:
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          # Root ZSU forum group from https://t.me/c/2012558636/39336.
+          CHAT_ID: -1002012558636
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
@@ -179,6 +180,10 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
+            if [ -z "${{ secrets.MESSAGE_THREAD_ID }}" ]; then
+              echo "::error::Missing required Telegram secret: MESSAGE_THREAD_ID"
+              exit 1
+            fi
             export VERSION=$(git rev-list --count HEAD)
             APK=$(find ./app/build/outputs/apk/release -name "*.apk")
             pip3 install telethon

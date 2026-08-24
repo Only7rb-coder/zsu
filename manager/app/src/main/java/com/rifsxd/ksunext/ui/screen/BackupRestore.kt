@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,13 +31,14 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.LocalScrollState
-import com.rifsxd.ksunext.ui.component.rememberLoadingDialog
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.reboot
 import com.topjohnwu.superuser.ShellUtils
 import com.topjohnwu.superuser.io.SuFile
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -155,6 +155,21 @@ private suspend fun restoreAllowlistFromUri(uri: Uri): Boolean = withContext(Dis
     return@withContext result
 }
 
+private object BackupRestoreOperationStore {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val busy = mutableStateOf(false)
+
+    fun launch(operation: suspend () -> Boolean, onComplete: (Boolean) -> Unit) {
+        if (busy.value) return
+        busy.value = true
+        scope.launch {
+            val result = runCatching { operation() }.getOrDefault(false)
+            busy.value = false
+            onComplete(result)
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -187,9 +202,8 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
             WindowInsetsSides.Top + WindowInsetsSides.Horizontal
         )
     ) { paddingValues ->
-        val loadingDialog = rememberLoadingDialog()
-        val context       = LocalContext.current
         val scope         = rememberCoroutineScope()
+        val operationBusy by BackupRestoreOperationStore.busy
 
         // Track which backup/restore type was last requested so the single
         // launcher knows what to do when the file-picker returns.
@@ -209,19 +223,23 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
         ) { result ->
             if (result.resultCode != RESULT_OK) return@rememberLauncherForActivityResult
             val uri = result.data?.data ?: return@rememberLauncherForActivityResult
-            scope.launch {
-                val ok = loadingDialog.withLoading {
+            BackupRestoreOperationStore.launch(
+                operation = {
                     if (lastBackupType.value == "allowlist") {
                         backupAllowlistToUri(uri)
                     } else {
                         backupModulesToUri(uri)
                     }
+                },
+                onComplete = { ok ->
+                    scope.launch {
+                        snackBarHost.showSnackbar(
+                            message = if (ok) backupSuccess else backupFailed,
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
-                snackBarHost.showSnackbar(
-                    message = if (ok) backupSuccess else backupFailed,
-                    duration = SnackbarDuration.Short
-                )
-            }
+            )
         }
 
         // ── GET CONTENT launcher (restore) ───────────────────────────────────
@@ -230,30 +248,34 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
         ) { result ->
             if (result.resultCode != RESULT_OK) return@rememberLauncherForActivityResult
             val uri = result.data?.data ?: return@rememberLauncherForActivityResult
-            scope.launch {
-                val ok = loadingDialog.withLoading {
+            BackupRestoreOperationStore.launch(
+                operation = {
                     if (lastRestoreType.value == "allowlist") {
                         restoreAllowlistFromUri(uri)
                     } else {
                         restoreModulesFromUri(uri)
                     }
-                }
-                if (ok && lastRestoreType.value == "module") {
-                    val result = snackBarHost.showSnackbar(
-                        message = restoreSuccess,
-                        actionLabel = reboot,
-                        duration = SnackbarDuration.Long
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        reboot()
+                },
+                onComplete = { ok ->
+                    scope.launch {
+                        if (ok && lastRestoreType.value == "module") {
+                            val snackbarResult = snackBarHost.showSnackbar(
+                                message = restoreSuccess,
+                                actionLabel = reboot,
+                                duration = SnackbarDuration.Long
+                            )
+                            if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                reboot()
+                            }
+                        } else {
+                            snackBarHost.showSnackbar(
+                                message = if (ok) restoreSuccess else restoreFailed,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
                     }
-                } else {
-                    snackBarHost.showSnackbar(
-                        message = if (ok) restoreSuccess else restoreFailed,
-                        duration = SnackbarDuration.Short
-                    )
                 }
-            }
+            )
         }
 
         // ── Content ───────────────────────────────────────────────────────────
@@ -280,6 +302,9 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                 }
                 .verticalScroll(rememberScrollState())
         ) {
+            if (operationBusy) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
 
             // ── Module backup ─────────────────────────────────────────────────
             val moduleBackup = stringResource(R.string.module_backup)
@@ -292,7 +317,7 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(enabled = !operationBusy) {
                     val ts        = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                     val suggested = "modules_backup_$ts.tar"
                     lastBackupName.value  = suggested
@@ -325,7 +350,7 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 },
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(enabled = !operationBusy) {
                     lastRestoreType.value = "module"
                     openRestoreLauncher.launch(
                         Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -349,7 +374,7 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(enabled = !operationBusy) {
                     val ts        = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                     val suggested = "allowlist_backup_$ts.tar"
                     lastBackupName.value  = suggested
@@ -375,7 +400,7 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                modifier = Modifier.clickable {
+                modifier = Modifier.clickable(enabled = !operationBusy) {
                     lastRestoreType.value = "allowlist"
                     openRestoreLauncher.launch(
                         Intent(Intent.ACTION_GET_CONTENT).apply {

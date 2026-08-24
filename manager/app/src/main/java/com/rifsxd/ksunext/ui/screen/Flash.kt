@@ -41,7 +41,10 @@ import com.rifsxd.ksunext.ui.theme.GREEN
 import com.rifsxd.ksunext.ui.theme.ORANGE
 import com.rifsxd.ksunext.ui.theme.RED
 import com.rifsxd.ksunext.ui.util.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
@@ -91,18 +94,15 @@ fun FlashScreen(
     flashIt: FlashIt
 ) {
 
-    var text by rememberSaveable { mutableStateOf("") }
-    var tempText: String
-    val logContent = rememberSaveable { StringBuilder() }
-    var showFloatAction by rememberSaveable { mutableStateOf(false) }
+    val text by FlashOperationStore.text
+    val logContent by FlashOperationStore.logContent
+    val showFloatAction by FlashOperationStore.showFloatAction
+    val flashing by FlashOperationStore.flashing
 
     val snackBarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    var flashing by rememberSaveable {
-        mutableStateOf(FlashingStatus.FLASHING)
-    }
 
     val context = LocalContext.current
 
@@ -130,7 +130,6 @@ fun FlashScreen(
     val confirmDialog = rememberConfirmDialog()
     var confirmed by rememberSaveable { mutableStateOf(flashIt !is FlashIt.FlashModules && flashIt !is FlashIt.FlashAnyKernel) }
     var pendingFlashIt by rememberSaveable { mutableStateOf<FlashIt?>(null) }
-    var hasFlashed by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(flashIt) {
         when {
@@ -189,29 +188,8 @@ fun FlashScreen(
     }
 
     LaunchedEffect(confirmed, pendingFlashIt) {
-        if (!confirmed || pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
-        hasFlashed = true
-        withContext(Dispatchers.IO) {
-            flashIt(pendingFlashIt!!, onStdout = {
-                tempText = "$it\n"
-                if (tempText.startsWith("[H[J")) { // clear command
-                    text = tempText.substring(6)
-                } else {
-                    text += tempText
-                }
-                logContent.append(it).append("\n")
-            }, onStderr = {
-                logContent.append(it).append("\n")
-            }).apply {
-                if (code != 0) {
-                    text += "Error code: $code.\n $err Please save and check the log.\n"
-                }
-                if (showReboot) {
-                    text += "\n\n\n"
-                    showFloatAction = true
-                }
-                flashing = if (code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
-            }
+        if (confirmed && pendingFlashIt != null) {
+            FlashOperationStore.start(pendingFlashIt!!)
         }
     }
 
@@ -449,6 +427,57 @@ sealed class FlashIt : Parcelable {
     data object FlashRestore : FlashIt()
 
     data object FlashUninstall : FlashIt()
+}
+
+private object FlashOperationStore {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var operationJob: Job? = null
+    private var activeKey: String? = null
+
+    val text = mutableStateOf("")
+    val logContent = mutableStateOf("")
+    val showFloatAction = mutableStateOf(false)
+    val flashing = mutableStateOf(FlashingStatus.FLASHING)
+
+    fun start(task: FlashIt) {
+        val key = task.toString()
+        if (activeKey == key && (operationJob?.isActive == true || flashing.value != FlashingStatus.FLASHING)) {
+            return
+        }
+        activeKey = key
+        text.value = ""
+        logContent.value = ""
+        showFloatAction.value = false
+        flashing.value = FlashingStatus.FLASHING
+        operationJob = scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                flashIt(
+                    task,
+                    onStdout = { line ->
+                        val output = "$line\\n"
+                        text.value = if (output.startsWith("\\u001b[H\\u001b[J")) {
+                            output.substring(6)
+                        } else {
+                            text.value + output
+                        }
+                        logContent.value += output
+                    },
+                    onStderr = { line ->
+                        logContent.value += "$line\\n"
+                    }
+                )
+            }
+            if (result.code != 0) {
+                text.value += "Error code: ${result.code}.\\n ${result.err} Please save and check the log.\\n"
+            }
+            if (result.showReboot) {
+                text.value += "\\n\\n\\n"
+                showFloatAction.value = true
+            }
+            flashing.value = if (result.code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
+            operationJob = null
+        }
+    }
 }
 
 fun flashIt(

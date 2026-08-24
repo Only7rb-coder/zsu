@@ -16,6 +16,9 @@ RUN_URL = os.environ.get("RUN_URL")
 TITLE = os.environ.get("TITLE")
 VERSION = os.environ.get("VERSION")
 EXPECTED_TOPIC_NAME = "Root ZSU"
+# The user-provided forum URL is https://t.me/c/2012558636/39336.
+# Telegram supergroup IDs use the -100 prefix for this internal ID.
+EXPECTED_CHAT_ID = -1002012558636
 MSG_TEMPLATE = """
 **{title}**
 #ci_{version}
@@ -60,6 +63,12 @@ def check_environ():
         except ValueError:
             print("[-] Invalid CHAT_ID: expected an integer")
             exit(1)
+    if CHAT_ID != EXPECTED_CHAT_ID:
+        print(
+            f"[-] Refusing to upload: CHAT_ID {CHAT_ID} is not the Root ZSU forum group "
+            f"({EXPECTED_CHAT_ID})"
+        )
+        exit(1)
     if not COMMIT_URL:
         print("[-] Invalid COMMIT_URL")
         exit(1)
@@ -100,8 +109,8 @@ async def verify_root_zsu_topic(bot):
     in that topic.
     """
     print(
-        f"[+] Using configured Telegram forum topic '{EXPECTED_TOPIC_NAME}' "
-        f"(topic ID {MESSAGE_THREAD_ID})"
+        f"[+] Using Telegram group {EXPECTED_CHAT_ID} and forum topic "
+        f"'{EXPECTED_TOPIC_NAME}' (topic ID {MESSAGE_THREAD_ID})"
     )
 
 

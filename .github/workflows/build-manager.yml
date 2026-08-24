@@ -93,7 +93,7 @@ jobs:
         id: need_upload
         run: |
           missing=0
-          for name in API_ID API_HASH BOT_TOKEN CHAT_ID MESSAGE_THREAD_ID; do
+          for name in API_ID API_HASH BOT_TOKEN MESSAGE_THREAD_ID; do
             if [ -z "${!name}" ]; then
               echo "::error::Missing required Telegram secret: $name"
               missing=1
@@ -107,7 +107,6 @@ jobs:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
           MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
 
       - name: Write key
@@ -183,7 +182,8 @@ jobs:
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          # Root ZSU forum group from https://t.me/c/2012558636/39336.
+          CHAT_ID: -1002012558636
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           # Required Root ZSU forum topic; never publish manager APKs to the chat root.
           MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}

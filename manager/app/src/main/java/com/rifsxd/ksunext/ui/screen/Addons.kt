@@ -27,7 +27,9 @@ import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.createRootShell
 import com.topjohnwu.superuser.CallbackList
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -239,17 +241,28 @@ private object AddonInstaller {
     }
 }
 
+private object AddonOperationStore {
+    // This scope is tied to the app process rather than the visible composable.
+    // Locking the screen may recreate the destination, but it must not cancel an
+    // active addon download or root installation.
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val busy = mutableStateOf(false)
+    val log = mutableStateOf("")
+    val installProgress = mutableFloatStateOf(0f)
+    val installStatus = mutableStateOf("")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun AddonsScreen(navigator: DestinationsNavigator) {
-    val scope = rememberCoroutineScope()
+    val scope = AddonOperationStore.scope
     val snackBarHost = LocalSnackbarHost.current
 
-    var busy by remember { mutableStateOf(false) }
-    var log by remember { mutableStateOf("") }
-    var installProgress by remember { mutableFloatStateOf(0f) }
-    var installStatus by remember { mutableStateOf("") }
+    var busy by AddonOperationStore.busy
+    var log by AddonOperationStore.log
+    var installProgress by AddonOperationStore.installProgress
+    var installStatus by AddonOperationStore.installStatus
 
     fun appendLog(s: String) { log += s + "\n" }
     fun updateProgress(progress: Float, status: String) {

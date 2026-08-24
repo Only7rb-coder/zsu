@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ui.screen
 
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,18 +48,65 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ghostlock.GhostlockRunner
 import com.rifsxd.ksunext.ui.util.rootAvailable
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private object BlRootOperationStore {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var operationJob: Job? = null
+
+    val isRunning = mutableStateOf(false)
+    val elapsedSeconds = mutableStateOf(0)
+    val statusMessage = mutableStateOf("")
+
+    fun start(context: Context) {
+        if (isRunning.value || operationJob?.isActive == true) return
+        val appContext = context.applicationContext
+        isRunning.value = true
+        elapsedSeconds.value = 0
+        statusMessage.value = appContext.getString(R.string.ghostlock_progress, 0)
+        operationJob = scope.launch {
+            val timerJob = launch {
+                while (isActive) {
+                    delay(1000)
+                    elapsedSeconds.value += 1
+                    statusMessage.value = appContext.getString(
+                        R.string.ghostlock_progress,
+                        elapsedSeconds.value
+                    )
+                }
+            }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    GhostlockRunner.run(appContext)
+                }
+                statusMessage.value = when {
+                    result.success -> appContext.getString(R.string.ghostlock_success)
+                    result.timedOut -> appContext.getString(R.string.ghostlock_timeout)
+                    else -> appContext.getString(R.string.ghostlock_failed)
+                }
+            } catch (_: Throwable) {
+                statusMessage.value = appContext.getString(R.string.ghostlock_failed)
+            } finally {
+                timerJob.cancel()
+                isRunning.value = false
+                operationJob = null
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun GhostlockScreen() {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val kernelRelease = System.getProperty("os.version", "unknown")
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
     val kernelSupported = GhostlockRunner.isKernelSupported(kernelRelease)
@@ -68,10 +115,9 @@ fun GhostlockScreen() {
         runCatching { rootAvailable() }.getOrDefault(false)
     }
 
-    var isRunning by rememberSaveable { mutableStateOf(false) }
+    val isRunning by BlRootOperationStore.isRunning
+    val statusMessage by BlRootOperationStore.statusMessage
     var showConfirmation by rememberSaveable { mutableStateOf(false) }
-    var elapsedSeconds by rememberSaveable { mutableStateOf(0) }
-    var statusMessage by rememberSaveable { mutableStateOf("") }
 
     if (showConfirmation) {
         AlertDialog(
@@ -83,29 +129,7 @@ fun GhostlockScreen() {
                 TextButton(
                     onClick = {
                         showConfirmation = false
-                        isRunning = true
-                        elapsedSeconds = 0
-                        statusMessage = context.getString(R.string.ghostlock_progress, 0)
-                        scope.launch {
-                            val timerJob = launch {
-                                while (isActive) {
-                                    delay(1000)
-                                    elapsedSeconds += 1
-                                    statusMessage = context.getString(R.string.ghostlock_progress, elapsedSeconds)
-                                }
-                            }
-                            val runJob = async(Dispatchers.IO) {
-                                GhostlockRunner.run(context)
-                            }
-                            val result = runJob.await()
-                            timerJob.cancel()
-                            isRunning = false
-                            statusMessage = when {
-                                result.success -> context.getString(R.string.ghostlock_success)
-                                result.timedOut -> context.getString(R.string.ghostlock_timeout)
-                                else -> context.getString(R.string.ghostlock_failed)
-                            }
-                        }
+                        BlRootOperationStore.start(context)
                     },
                     enabled = !isRunning
                 ) { Text(stringResource(R.string.ghostlock_continue)) }
