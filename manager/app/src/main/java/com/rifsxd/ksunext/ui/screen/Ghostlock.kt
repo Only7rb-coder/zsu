@@ -48,8 +48,10 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ghostlock.GhostlockRunner
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -65,6 +67,7 @@ fun GhostlockScreen() {
 
     var isRunning by rememberSaveable { mutableStateOf(false) }
     var showConfirmation by rememberSaveable { mutableStateOf(false) }
+    var elapsedSeconds by rememberSaveable { mutableStateOf(0) }
     var output by rememberSaveable { mutableStateOf("") }
 
     if (showConfirmation) {
@@ -78,11 +81,21 @@ fun GhostlockScreen() {
                     onClick = {
                         showConfirmation = false
                         isRunning = true
-                        output = context.getString(R.string.ghostlock_starting)
+                        elapsedSeconds = 0
+                        output = context.getString(R.string.ghostlock_progress, 0)
                         scope.launch {
-                            val result = withContext(Dispatchers.IO) {
+                            val timerJob = launch {
+                                while (isActive) {
+                                    delay(1000)
+                                    elapsedSeconds += 1
+                                    output = context.getString(R.string.ghostlock_progress, elapsedSeconds)
+                                }
+                            }
+                            val runJob = async(Dispatchers.IO) {
                                 GhostlockRunner.run(context)
                             }
+                            val result = runJob.await()
+                            timerJob.cancel()
                             isRunning = false
                             output = result.output.ifBlank {
                                 context.getString(

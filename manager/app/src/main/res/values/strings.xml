@@ -115,6 +115,7 @@
     <string name="ghostlock_abi_unsupported_message">This manager build includes the Ghostlock payload for ARM64 devices only. The tab remains visible, but execution is disabled on this ABI.</string>
     <string name="ghostlock_run">Run Ghostlock</string>
     <string name="ghostlock_running">Running…</string>
+    <string name="ghostlock_progress">Running Ghostlock… %1$d s</string>
     <string name="ghostlock_starting">Preparing Ghostlock…</string>
     <string name="ghostlock_confirm_title">Run Ghostlock?</string>
     <string name="ghostlock_confirm_message">Ghostlock performs a device-specific kernel operation. A mismatched or unstable device kernel can crash or reboot the phone. Continue only if you understand the risk.</string>

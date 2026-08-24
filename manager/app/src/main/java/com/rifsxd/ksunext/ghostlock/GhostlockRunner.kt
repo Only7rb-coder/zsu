@@ -15,7 +15,8 @@ object GhostlockRunner {
     private const val KSUD_NAME = "libksud.so"
     private const val WORK_DIR_NAME = "ghostlock"
     private const val LOG_NAME = ".ghostlock_ksu.log"
-    private const val TIMEOUT_SECONDS = 300L
+    // Fail a stalled exploit attempt promptly instead of leaving the manager waiting for five minutes.
+    private const val TIMEOUT_SECONDS = 120L
 
     /** Exact uname -r values for which the bundled offset tables exist. */
     val supportedKernels: Set<String> = setOf(

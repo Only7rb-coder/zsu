@@ -787,6 +787,8 @@ private fun TopBar(
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 8.dp)
+                        .size(48.dp)
+                        .clip(CircleShape)
                         .graphicsLayer {
                             rotationZ = rotation
                         }
