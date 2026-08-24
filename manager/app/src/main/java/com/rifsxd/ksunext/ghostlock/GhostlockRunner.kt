@@ -58,12 +58,12 @@ object GhostlockRunner {
     fun run(context: Context): Result {
         val workDir = File(context.filesDir, WORK_DIR_NAME)
         if (!workDir.exists() && !workDir.mkdirs()) {
-            return Result(false, false, "Unable to create Ghostlock working directory: ${workDir.absolutePath}")
+            return Result(false, false, "Unable to create BL Root working directory: ${workDir.absolutePath}")
         }
 
         val packagedBinary = File(context.applicationInfo.nativeLibraryDir, BINARY_NAME)
         if (!packagedBinary.isFile) {
-            return Result(false, false, "Ghostlock payload is not present in this APK")
+            return Result(false, false, "BL Root payload is not present in this APK")
         }
 
         // Native libraries are extracted to an executable filesystem location by Android.
@@ -86,7 +86,7 @@ object GhostlockRunner {
                 }
                 .start()
         } catch (error: IOException) {
-            return Result(false, false, "Unable to start Ghostlock: ${error.message}")
+            return Result(false, false, "Unable to start BL Root: ${error.message}")
         }
 
         val reader = thread(start = true, name = "ghostlock-output-reader", isDaemon = true) {
@@ -128,7 +128,7 @@ object GhostlockRunner {
 
         val exitCode = if (finished) process.exitValue() else -1
         val finalOutput = synchronized(output) { output.toString().trim() }
-        val prefix = if (!finished) "Ghostlock timed out after ${TIMEOUT_SECONDS}s" else "Ghostlock exited with code $exitCode"
+        val prefix = if (!finished) "BL Root timed out after ${TIMEOUT_SECONDS}s" else "BL Root exited with code $exitCode"
         val fullOutput = listOf(prefix, finalOutput).filter { it.isNotBlank() }.joinToString("\n")
         return Result(finished && exitCode == 0, !finished, fullOutput)
     }
