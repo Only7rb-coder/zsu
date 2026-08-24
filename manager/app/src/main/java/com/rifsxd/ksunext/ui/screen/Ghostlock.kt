@@ -122,11 +122,6 @@ fun GhostlockScreen() {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = stringResource(R.string.ghostlock_summary),
-                style = MaterialTheme.typography.bodyLarge
-            )
-
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),

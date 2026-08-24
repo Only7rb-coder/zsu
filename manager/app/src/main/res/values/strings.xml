@@ -104,7 +104,6 @@
     <string name="home_jailbreak_unavailable">Jailbreak is unavailable on this system.</string>
     <string name="jailbreak_timeout">Jailbreak may have failed. Check the manager logs.</string>
     <string name="ghostlock">Ghostlock</string>
-    <string name="ghostlock_summary">Run the manager-bundled Ghostlock payload on a supported kernel. This tab is available whether or not ZSU root access is currently available.</string>
     <string name="ghostlock_kernel">Kernel</string>
     <string name="ghostlock_kernel_supported">Supported</string>
     <string name="ghostlock_kernel_unsupported">Unsupported</string>
