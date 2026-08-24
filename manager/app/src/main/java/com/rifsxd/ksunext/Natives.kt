@@ -32,12 +32,6 @@ object Natives {
         System.loadLibrary("kernelsu")
     }
 
-    /**
-     * Clear the cached kernel info before a lifecycle recheck. This is needed
-     * after reboot, manager package replacement, or a stale fd handoff.
-     */
-    external fun refreshDriverState()
-
     val version: Int
         external get
 

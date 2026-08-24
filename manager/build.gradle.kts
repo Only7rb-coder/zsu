@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3326
+    val minimumCommitCountForRelease = 3327
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing crash-hardening fixes.
-    return "1.2.8"
+    // User-facing release version containing the Android 16 compatibility fix.
+    return "1.2.9"
 }
 
 subprojects {
