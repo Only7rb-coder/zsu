@@ -215,7 +215,8 @@ private fun KernelFeaturesCard(
     val sulogSupported = sulogStatusParam == "supported"
     val adbRootSupported = adbRootStatus == "supported"
     val selinuxHideSupported = selinuxHideStatus == "supported"
-    val avcSpoofSupported = avcSpoofStatus == "supported"
+    // Module-managed AVC spoofing remains controllable through the manager.
+    val avcSpoofSupported = avcSpoofStatus == "supported" || avcSpoofStatus == "managed"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -407,10 +408,10 @@ private fun KernelFeaturesCard(
             SwitchItem(
                 icon = Icons.Filled.Shield,
                 title = stringResource(id = R.string.settings_enable_avc_spoof),
-                summary = if (avcSpoofSupported) {
-                    stringResource(id = R.string.settings_enable_avc_spoof_summary)
-                } else {
-                    stringResource(id = R.string.feature_status_unsupported_summary)
+                summary = when {
+                    avcSpoofStatus == "managed" -> stringResource(id = R.string.settings_enable_avc_spoof_managed_summary)
+                    avcSpoofSupported -> stringResource(id = R.string.settings_enable_avc_spoof_summary)
+                    else -> stringResource(id = R.string.feature_status_unsupported_summary)
                 },
                 checked = isAvcSpoofEnabled,
                 enabled = avcSpoofSupported,
@@ -418,10 +419,31 @@ private fun KernelFeaturesCard(
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
             ) { checked ->
                 val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                if (Natives.setAvcSpoofEnabled(checked)) {
-                    execKsud("feature save", true)
+                val result = Natives.setAvcSpoofEnabled(checked)
+                // Some kernels report EBUSY (-16) when the requested hook state
+                // is already held by the active handler. Treat it as success only
+                // when a read-back confirms the requested state.
+                val stateMatches = result == -16 && Natives.isAvcSpoofEnabled() == checked
+                if (result == 0 || stateMatches) {
+                    val saved = execKsud("feature save", true)
                     prefsLocal.edit { putInt("avc_spoof_mode", if (checked) 0 else 2) }
                     isAvcSpoofEnabled = checked
+                    if (!saved) {
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                if (stateMatches) R.string.settings_enable_avc_spoof_already_active
+                                else R.string.settings_enable_avc_spoof_save_failed
+                            ),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_enable_avc_spoof_failed, result),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
 
