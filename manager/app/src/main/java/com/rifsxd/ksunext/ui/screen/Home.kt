@@ -96,40 +96,53 @@ import kotlinx.coroutines.withContext
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
-    val kernelVersion = getKernelVersion()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    // These values are stable for the lifetime of the Home destination. Keeping
+    // probes out of ordinary recomposition prevents tab returns and scroll updates
+    // from repeating JNI, shell, and preference work.
+    val kernelVersion = remember { getKernelVersion() }
+    val topAppBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
 
     // Kernel presence and manager authorization are separate states. A freshly
     // flashed boot image can expose the driver before the installed APK is
     // recognized as the trusted manager, so never report that state as
     // "not installed".
-    val detectedKernelVersion = runCatching { Natives.version }
-        .getOrDefault(-1)
-        .takeIf { it > 0 }
-    val isManager = detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
-    val rootPresent = remember {
-        runCatching { rootAvailable() }.getOrDefault(false)
+    val detectedKernelVersion = remember {
+        runCatching { Natives.version }
+            .getOrDefault(-1)
+            .takeIf { it > 0 }
     }
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootPresent
+    val isManager = remember(detectedKernelVersion) {
+        detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
+    }
+    val rootPresent = remember { runCatching { rootAvailable() }.getOrDefault(false) }
+    val managerReady = remember { runCatching { !Natives.requireNewKernel() }.getOrDefault(false) }
+    val fullFeatured = remember(isManager, managerReady, rootPresent) {
+        isManager && managerReady && rootPresent
+    }
     val ksuVersion = detectedKernelVersion
-    val ksuVersionTag = if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null
-    val kernelUAPIVersion = if (detectedKernelVersion != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null
-    val managerUAPIVersion = runCatching { Natives.managerUAPIVersion }.getOrDefault(0)
+    val ksuVersionTag = remember(detectedKernelVersion) {
+        if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null
+    }
+    val kernelUAPIVersion = remember(detectedKernelVersion) {
+        if (detectedKernelVersion != null) runCatching { Natives.kernelUAPIVersion }.getOrNull() else null
+    }
+    val managerUAPIVersion = remember { runCatching { Natives.managerUAPIVersion }.getOrDefault(0) }
 
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
-    val jailbreakSupported = ksuVersion == null && kernelVersion.isGKI() &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getSelinuxEnforce() == false
+    val prefs = remember(context) { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val developerOptionsEnabled = remember { prefs.getBoolean("enable_developer_options", false) }
+    val jailbreakSupported = remember(ksuVersion, kernelVersion) {
+        ksuVersion == null && kernelVersion.isGKI() &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getSelinuxEnforce() == false
+    }
     var jailbreakLaunching by rememberSaveable { mutableStateOf(false) }
     val jailbreakScope = rememberCoroutineScope()
     
-    // Get scroll state for bottom bar tracking
+    // Get scroll state for bottom bar tracking. Keep content padding stable while
+    // the bar animates so hiding/showing it does not remeasure the whole Home tree.
     val bottomBarScrollState = LocalScrollState.current
-
-    val scrollState = LocalScrollState.current
-    val isNavBarHidden = scrollState?.isScrollingDown?.value ?: false
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + if (isNavBarHidden) 0.dp else 112.dp
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
     
     // Create scroll connection for bottom bar
     val bottomBarScrollConnection = if (bottomBarScrollState != null) {
@@ -173,8 +186,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val lkmMode = ksuVersion?.let {
-                Natives.isLkmMode
+            val lkmMode = remember(ksuVersion) {
+                ksuVersion?.let { Natives.isLkmMode }
             }
 
             StatusCard(
@@ -211,9 +224,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     onOpenBlRoot = { navigator.navigate(GhostlockScreenDestination) }
                 )
             }
-
-            val homeDestination = BottomBarDestination.entries.firstOrNull()
-            val startRoute = homeDestination?.direction?.route
 
             if (fullFeatured) {
                 Row(
@@ -292,9 +302,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 )
             }
 
-            val checkUpdate =
-                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                    .getBoolean("check_update", true)
+            val checkUpdate = remember { prefs.getBoolean("check_update", true) }
             if (checkUpdate) {
                 UpdateCard()
             }
