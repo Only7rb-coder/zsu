@@ -107,7 +107,9 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         .getOrDefault(-1)
         .takeIf { it > 0 }
     val isManager = detectedKernelVersion != null && runCatching { Natives.isManager }.getOrDefault(false)
-    val rootPresent = runCatching { rootAvailable() }.getOrDefault(false)
+    val rootPresent = remember {
+        runCatching { rootAvailable() }.getOrDefault(false)
+    }
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootPresent
     val ksuVersion = detectedKernelVersion
     val ksuVersionTag = if (detectedKernelVersion != null) runCatching { Natives.getVersionTag() }.getOrNull() else null

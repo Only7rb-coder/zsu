@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,7 +64,9 @@ fun GhostlockScreen() {
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
     val kernelSupported = GhostlockRunner.isKernelSupported(kernelRelease)
     val canRun = abiSupported && kernelSupported
-    val rootPresent = runCatching { rootAvailable() }.getOrDefault(false)
+    val rootPresent = remember {
+        runCatching { rootAvailable() }.getOrDefault(false)
+    }
 
     var isRunning by rememberSaveable { mutableStateOf(false) }
     var showConfirmation by rememberSaveable { mutableStateOf(false) }

@@ -257,7 +257,9 @@ class MainActivity : ComponentActivity() {
                 val navigator = navController.rememberDestinationsNavigator()
 
                 val isManager = Natives.isManager
-                val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+                val fullFeatured = remember(isManager) {
+                    isManager && !Natives.requireNewKernel() && rootAvailable()
+                }
 
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
@@ -398,14 +400,14 @@ class MainActivity : ComponentActivity() {
                                             // Bottom bar → bottom bar: slide based on index direction
                                             targetIndex != -1 && initialIndex != -1 -> {
                                                 val offsetSign = if (targetIndex > initialIndex) 1 else -1
-                                                slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(300))
+                                                slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(180))
                                             }
                                             // Detail page → bottom bar: slide in from left
                                             targetRoute in bottomBarRoutes && initialRoute !in bottomBarRoutes -> {
-                                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(180))
                                             }
                                             // Bottom bar → detail page: slide in from right
-                                            else -> slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
+                                            else -> slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(180))
                                         }
                                     }
 
@@ -420,14 +422,14 @@ class MainActivity : ComponentActivity() {
                                             // Bottom bar → bottom bar: slide out opposite direction
                                             targetIndex != -1 && initialIndex != -1 -> {
                                                 val offsetSign = if (targetIndex > initialIndex) -1 else 1
-                                                slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(300))
+                                                slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(180))
                                             }
                                             // Bottom bar → detail page: slide out to left
                                             initialRoute in bottomBarRoutes && targetRoute !in bottomBarRoutes -> {
-                                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(180))
                                             }
                                             // Default
-                                            else -> slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                                            else -> slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(180))
                                         }
                                     }
 
@@ -442,13 +444,13 @@ class MainActivity : ComponentActivity() {
                                             // Bottom bar → bottom bar pop: mirror of exit
                                             targetIndex != -1 && initialIndex != -1 -> {
                                                 val offsetSign = if (targetIndex > initialIndex) 1 else -1
-                                                slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(300))
+                                                slideInHorizontally(initialOffsetX = { it * offsetSign }, animationSpec = tween(180))
                                             }
                                             // Returning from detail → bottom bar: slide in from left
                                             targetRoute in bottomBarRoutes -> {
-                                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(180))
                                             }
-                                            else -> slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                                            else -> slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(180))
                                         }
                                     }
 
@@ -463,13 +465,13 @@ class MainActivity : ComponentActivity() {
                                             // Bottom bar → bottom bar pop
                                             targetIndex != -1 && initialIndex != -1 -> {
                                                 val offsetSign = if (targetIndex > initialIndex) -1 else 1
-                                                slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(300))
+                                                slideOutHorizontally(targetOffsetX = { it * offsetSign }, animationSpec = tween(180))
                                             }
                                             // Detail page closing: slide out to right
                                             initialRoute !in bottomBarRoutes -> {
-                                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+                                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(180))
                                             }
-                                            else -> slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+                                            else -> slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(180))
                                         }
                                     }
                                 }
@@ -538,7 +540,9 @@ private fun BottomBar(
 ) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+    val fullFeatured = remember(isManager) {
+        isManager && !Natives.requireNewKernel() && rootAvailable()
+    }
 
     val visibleDestinations = remember(fullFeatured) {
         BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
@@ -570,7 +574,7 @@ private fun BottomBar(
         animationSpec = if (isDraggingPill) {
             spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
         } else {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
         },
         label = "selectedIndex"
     )
