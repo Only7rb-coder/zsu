@@ -748,12 +748,14 @@ private fun ModuleList(
                             },
                             onUpdate = {
                                 scope.launch {
-                                    onModuleUpdate(
-                                        module,
-                                        updatedModule.third,
-                                        updatedModule.first,
-                                        "${module.name}-${updatedModule.second}.zip"
-                                    )
+                                    updatedModule?.let { update ->
+                                        onModuleUpdate(
+                                            module,
+                                            update.changelog,
+                                            update.zipUrl,
+                                            "${module.name}-${update.version}.zip"
+                                        )
+                                    }
                                     viewModel.markNeedRefresh()
                                 }
                             },
