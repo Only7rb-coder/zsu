@@ -15,8 +15,10 @@ object GhostlockRunner {
     private const val KSUD_NAME = "libksud.so"
     private const val WORK_DIR_NAME = "ghostlock"
     private const val LOG_NAME = ".ghostlock_ksu.log"
-    // Fail a stalled exploit attempt promptly instead of leaving the manager waiting for five minutes.
-    private const val TIMEOUT_SECONDS = 120L
+    // The native path can retry W1/W2/W3 and then wait for the independent
+    // KernelSU handoff. Keep a bounded four-minute deadline so slow devices do
+    // not get cut off while still failing a genuinely stalled attempt promptly.
+    private const val TIMEOUT_SECONDS = 240L
 
     /** Exact uname -r values for which the bundled offset tables exist. */
     val supportedKernels: Set<String> = setOf(
