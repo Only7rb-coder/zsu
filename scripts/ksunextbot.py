@@ -1,7 +1,7 @@
 import asyncio
 import os
 import sys
-from telethon import TelegramClient
+from telethon import TelegramClient, functions, types
 from telethon.tl.functions.help import GetConfigRequest
 
 # Environment Variables
@@ -105,17 +105,47 @@ async def main():
         print(caption)
         print("---")
         print("[+] Sending")
-        send_kwargs = {
-            "entity": CHAT_ID,
-            "file": files,
-            "caption": caption,
-            "parse_mode": "markdown",
-        }
-        if MESSAGE_THREAD_ID is not None:
-            send_kwargs["reply_to"] = MESSAGE_THREAD_ID
-        else:
+        if MESSAGE_THREAD_ID is None:
             print("[+] No Telegram thread configured; uploading to chat root")
-        await bot.send_file(**send_kwargs)
+            await bot.send_file(
+                entity=CHAT_ID,
+                file=files,
+                caption=caption,
+                parse_mode="markdown",
+            )
+        else:
+            # Telethon's high-level send_file(reply_to=...) creates an
+            # InputReplyToMessage without top_msg_id. Telegram therefore does
+            # not reliably place the upload inside a forum topic. Build the
+            # media request explicitly and set both topic fields.
+            print(f"[+] Uploading to forum topic {MESSAGE_THREAD_ID}")
+            for file_path, file_caption in zip(files, caption):
+                uploaded_file = await bot.upload_file(file_path)
+                parsed_caption, entities = await bot._parse_message_text(
+                    file_caption,
+                    "markdown",
+                )
+                media = types.InputMediaUploadedDocument(
+                    file=uploaded_file,
+                    mime_type="application/vnd.android.package-archive",
+                    attributes=[
+                        types.DocumentAttributeFilename(os.path.basename(file_path))
+                    ],
+                    force_file=True,
+                )
+                reply_to = types.InputReplyToMessage(
+                    reply_to_msg_id=MESSAGE_THREAD_ID,
+                    top_msg_id=MESSAGE_THREAD_ID,
+                )
+                await bot(
+                    functions.messages.SendMediaRequest(
+                        peer=CHAT_ID,
+                        media=media,
+                        reply_to=reply_to,
+                        message=parsed_caption,
+                        entities=entities,
+                    )
+                )
         print("[+] Done!")
 
 if __name__ == "__main__":
