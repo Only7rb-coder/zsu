@@ -91,22 +91,31 @@ def check_environ():
 
 
 async def verify_root_zsu_topic(bot):
-    """Resolve the configured topic and prove its Telegram title before sending."""
+    """Resolve the configured forum topic and prove its title before sending."""
     print(
         f"[+] Resolving Telegram forum topic '{EXPECTED_TOPIC_NAME}' "
-        f"(message ID {MESSAGE_THREAD_ID})"
+        f"(topic ID {MESSAGE_THREAD_ID})"
     )
-    topic_message = await bot.get_messages(CHAT_ID, ids=MESSAGE_THREAD_ID)
-    if topic_message is None or getattr(topic_message, "id", None) != MESSAGE_THREAD_ID:
-        raise RuntimeError(
-            f"Root ZSU topic message {MESSAGE_THREAD_ID} was not found in CHAT_ID"
+    result = await bot(
+        functions.channels.GetForumTopicsByIDRequest(
+            channel=CHAT_ID,
+            topics=[MESSAGE_THREAD_ID],
         )
-    topic_action = getattr(topic_message, "action", None)
-    topic_name = getattr(topic_action, "title", None)
+    )
+    topics = getattr(result, "topics", None) or []
+    topic = next(
+        (item for item in topics if getattr(item, "id", None) == MESSAGE_THREAD_ID),
+        None,
+    )
+    if topic is None:
+        raise RuntimeError(
+            f"Root ZSU forum topic {MESSAGE_THREAD_ID} was not found in CHAT_ID"
+        )
+    topic_name = getattr(topic, "title", None)
     if topic_name != EXPECTED_TOPIC_NAME:
         raise RuntimeError(
             f"Telegram topic mismatch: expected '{EXPECTED_TOPIC_NAME}', "
-            f"got {topic_name!r} for message {MESSAGE_THREAD_ID}"
+            f"got {topic_name!r} for topic {MESSAGE_THREAD_ID}"
         )
     print(f"[+] Confirmed forum topic: {topic_name} ({MESSAGE_THREAD_ID})")
 
