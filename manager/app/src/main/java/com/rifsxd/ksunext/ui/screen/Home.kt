@@ -308,7 +308,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
 
             InfoCard(autoExpand = developerOptionsEnabled)
-            IssueReportCard()
             ContributorsCard()
             Spacer(Modifier)
         }
@@ -1392,9 +1391,9 @@ private fun InfoCard(autoExpand: Boolean = false) {
 data class Contributor(
     val login: String,
     val name: String? = null,
-    val githubUrl: String,
+    val accountUrl: String,
     val role: String,
-    val donationUrl: String,
+    val channelUrl: String,
     val avatarRes: Int? = null
 )
 
@@ -1406,15 +1405,15 @@ fun ContributorsCard() {
         Contributor(
             login = "Only7rb-coder",
             name = "MARO_ROOT",
-            githubUrl = "https://github.com/Only7rb-coder",
+            accountUrl = "https://t.me/maro_root",
             role = "ZSU Owner & Maintainer",
-            donationUrl = "https://t.me/maroroot"
+            channelUrl = "https://t.me/maroroot"
         ),
         Contributor(
             login = "CheatNinja",
-            githubUrl = "https://t.me/CheatNinja_TGs_Official",
+            accountUrl = "https://t.me/ileadershipi",
             role = "ZSU Partner",
-            donationUrl = "https://t.me/CheatNinja_TGs_Official",
+            channelUrl = "https://t.me/CheatNinja_TGs_Official",
             avatarRes = R.drawable.cheatninja_logo
         )
     )
@@ -1435,8 +1434,8 @@ fun ContributorsCard() {
             contributors.forEach { contributor ->
                 ContributorRow(
                     contributor = contributor,
-                    onProfileClick = { safeOpenUri(zsuLinkContext, contributor.githubUrl) },
-                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.donationUrl) }
+                    onProfileClick = { safeOpenUri(zsuLinkContext, contributor.accountUrl) },
+                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.channelUrl) }
                 )
             }
         }
@@ -1538,14 +1537,14 @@ private fun ContributorRow(
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Icon(
-                imageVector = Icons.Filled.Favorite,
-                contentDescription = null,
+                painter = painterResource(R.drawable.ic_telegram),
+                contentDescription = stringResource(R.string.contributor_channel),
                 modifier = Modifier.size(13.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(5.dp))
             Text(
-                text = stringResource(R.string.support),
+                text = stringResource(R.string.contributor_channel),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -67,6 +67,7 @@ static const struct kernel_offsets known_offsets[] = {
 #include "6.12.23-android16-5-gb2a876903b49-ab14541642-4k/offsets.h"
 #include "6.12.23-android16-5-gf1bdb13583da-ab13761046-4k/offsets.h"
 #include "6.12.30-android16-5-g6e872b4863d6-ab13847919-4k/offsets.h"
+#include "6.12.30-android16-5-pd30ff70-abogkiS948BXXS4AZG5-4k/offsets.h"
 #include "6.12.38-android16-5-g844001fb8721-ab14552068-4k/offsets.h"
   { .uname_r = NULL }
 };

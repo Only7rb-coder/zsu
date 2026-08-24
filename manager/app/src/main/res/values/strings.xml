@@ -10,6 +10,7 @@
     <string name="confirm">Confirm</string>
     <string name="app_name" translatable="false">ZSU</string>
     <string name="addons" translatable="false">Addons</string>
+    <string name="contributor_channel">Channel</string>
     <string name="manage">Manage</string>
     <string name="manage_root_ready">Control center</string>
     <string name="manage_root_unavailable">Limited mode</string>
