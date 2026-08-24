@@ -41,8 +41,14 @@ def get_caption():
 
 def check_environ():
     global CHAT_ID, MESSAGE_THREAD_ID
-    if BOT_TOKEN is None:
+    if not BOT_TOKEN or not BOT_TOKEN.strip():
         print("[-] Invalid BOT_TOKEN")
+        exit(1)
+    if not API_ID or not API_ID.strip():
+        print("[-] Invalid API_ID")
+        exit(1)
+    if not API_HASH or not API_HASH.strip():
+        print("[-] Invalid API_HASH")
         exit(1)
     if not CHAT_ID or not CHAT_ID.strip():
         print("[-] Invalid CHAT_ID")
@@ -53,19 +59,19 @@ def check_environ():
         except ValueError:
             print("[-] Invalid CHAT_ID: expected an integer")
             exit(1)
-    if COMMIT_URL is None:
+    if not COMMIT_URL:
         print("[-] Invalid COMMIT_URL")
         exit(1)
-    if COMMIT_MESSAGE is None:
+    if not COMMIT_MESSAGE:
         print("[-] Invalid COMMIT_MESSAGE")
         exit(1)
-    if RUN_URL is None:
+    if not RUN_URL:
         print("[-] Invalid RUN_URL")
         exit(1)
-    if TITLE is None:
+    if not TITLE:
         print("[-] Invalid TITLE")
         exit(1)
-    if VERSION is None:
+    if not VERSION:
         print("[-] Invalid VERSION")
         exit(1)
     # MESSAGE_THREAD_ID is optional. An empty value means upload to the chat root
@@ -117,3 +123,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         print(f"[-] An error occurred: {e}")
+        raise

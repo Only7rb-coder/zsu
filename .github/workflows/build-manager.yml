@@ -92,11 +92,22 @@ jobs:
       - name: Setup need_upload
         id: need_upload
         run: |
-          if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
-            echo "UPLOAD=true" >> $GITHUB_OUTPUT
-          else
-            echo "UPLOAD=false" >> $GITHUB_OUTPUT
+          missing=0
+          for name in API_ID API_HASH BOT_TOKEN CHAT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required Telegram secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
           fi
+          echo "UPLOAD=true" >> "$GITHUB_OUTPUT"
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
 
       - name: Write key
         run: |
@@ -180,9 +191,15 @@ jobs:
           TITLE: ${{ matrix.spoofed && 'Stable Manager Build (Spoofed)' || 'Stable Manager Build (Normal)' }}
           BRANCH: ${{ github.ref_name }}
         run: |
-          if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
-            export VERSION=$(git rev-list --count HEAD)
-            APK=$(find ./app/build/outputs/apk/release -name "*.apk")
-            pip3 install telethon
-            python3 $GITHUB_WORKSPACE/scripts/ksunextbot.py $APK
+          set -euo pipefail
+          export VERSION=$(git rev-list --count HEAD)
+          mapfile -t APKS < <(find ./app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print | sort)
+          if [ "${#APKS[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one manager APK, found ${#APKS[@]}"
+            printf '%s\n' "${APKS[@]}"
+            exit 1
           fi
+          echo "[+] Uploading ${APKS[0]} to Telegram"
+          pip3 install telethon
+          python3 "$GITHUB_WORKSPACE/scripts/ksunextbot.py" "${APKS[0]}"
+          echo "[+] Telegram uploader completed successfully"
