@@ -420,11 +420,11 @@ private fun KernelFeaturesCard(
             ) { checked ->
                 val prefsLocal = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                 val result = Natives.setAvcSpoofEnabled(checked)
-                // Some kernels report EBUSY (-16) when the requested hook state
-                // is already held by the active handler. Treat it as success only
-                // when a read-back confirms the requested state.
-                val stateMatches = result == -16 && Natives.isAvcSpoofEnabled() == checked
-                if (result == 0 || stateMatches) {
+                // The current native API returns Boolean. A false result can still
+                // mean the requested state was already active, so confirm by reading
+                // the state back before reporting failure.
+                val stateMatches = Natives.isAvcSpoofEnabled() == checked
+                if (result || stateMatches) {
                     val saved = execKsud("feature save", true)
                     prefsLocal.edit { putInt("avc_spoof_mode", if (checked) 0 else 2) }
                     isAvcSpoofEnabled = checked
@@ -441,7 +441,7 @@ private fun KernelFeaturesCard(
                 } else {
                     Toast.makeText(
                         context,
-                        context.getString(R.string.settings_enable_avc_spoof_failed, result),
+                        context.getString(R.string.settings_enable_avc_spoof_failed),
                         Toast.LENGTH_LONG
                     ).show()
                 }
