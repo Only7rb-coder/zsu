@@ -74,16 +74,19 @@ def check_environ():
     if not VERSION:
         print("[-] Invalid VERSION")
         exit(1)
-    # MESSAGE_THREAD_ID is optional. An empty value means upload to the chat root
-    # instead of a forum topic, which is valid for channels and non-forum chats.
+    # Manager releases must always be sent directly into the configured forum topic.
+    # Never fall back to the chat root: a missing topic is a hard failure.
     if not MESSAGE_THREAD_ID or not MESSAGE_THREAD_ID.strip():
-        MESSAGE_THREAD_ID = None
-    else:
-        try:
-            MESSAGE_THREAD_ID = int(MESSAGE_THREAD_ID.strip())
-        except ValueError:
-            print("[-] Invalid MESSAGE_THREAD_ID: expected an integer when set")
-            exit(1)
+        print("[-] Missing MESSAGE_THREAD_ID: refusing to upload outside the Root ZSU topic")
+        exit(1)
+    try:
+        MESSAGE_THREAD_ID = int(MESSAGE_THREAD_ID.strip())
+    except ValueError:
+        print("[-] Invalid MESSAGE_THREAD_ID: expected the Root ZSU forum topic ID")
+        exit(1)
+    if MESSAGE_THREAD_ID <= 0:
+        print("[-] Invalid MESSAGE_THREAD_ID: expected a positive forum topic ID")
+        exit(1)
 
 
 async def main():
@@ -105,48 +108,41 @@ async def main():
         print(caption)
         print("---")
         print("[+] Sending")
-        if MESSAGE_THREAD_ID is None:
-            print("[+] No Telegram thread configured; uploading to chat root")
-            await bot.send_file(
-                entity=CHAT_ID,
-                file=files,
-                caption=caption,
-                parse_mode="markdown",
+        # Telethon's high-level send_file(reply_to=...) creates an
+        # InputReplyToMessage without top_msg_id. Telegram therefore does
+        # not reliably place the upload inside a forum topic. Build the
+        # media request explicitly and set both topic fields.
+        print(f"[+] Uploading directly to Root ZSU forum topic {MESSAGE_THREAD_ID}")
+        for file_path, file_caption in zip(files, caption):
+            uploaded_file = await bot.upload_file(file_path)
+            parsed_caption, entities = await bot._parse_message_text(
+                file_caption,
+                "markdown",
             )
-        else:
-            # Telethon's high-level send_file(reply_to=...) creates an
-            # InputReplyToMessage without top_msg_id. Telegram therefore does
-            # not reliably place the upload inside a forum topic. Build the
-            # media request explicitly and set both topic fields.
-            print(f"[+] Uploading to forum topic {MESSAGE_THREAD_ID}")
-            for file_path, file_caption in zip(files, caption):
-                uploaded_file = await bot.upload_file(file_path)
-                parsed_caption, entities = await bot._parse_message_text(
-                    file_caption,
-                    "markdown",
+            media = types.InputMediaUploadedDocument(
+                file=uploaded_file,
+                mime_type="application/vnd.android.package-archive",
+                attributes=[
+                    types.DocumentAttributeFilename(os.path.basename(file_path))
+                ],
+                force_file=True,
+            )
+            reply_to = types.InputReplyToMessage(
+                reply_to_msg_id=MESSAGE_THREAD_ID,
+                top_msg_id=MESSAGE_THREAD_ID,
+            )
+            await bot(
+                functions.messages.SendMediaRequest(
+                    peer=CHAT_ID,
+                    media=media,
+                    reply_to=reply_to,
+                    message=parsed_caption,
+                    entities=entities,
                 )
-                media = types.InputMediaUploadedDocument(
-                    file=uploaded_file,
-                    mime_type="application/vnd.android.package-archive",
-                    attributes=[
-                        types.DocumentAttributeFilename(os.path.basename(file_path))
-                    ],
-                    force_file=True,
-                )
-                reply_to = types.InputReplyToMessage(
-                    reply_to_msg_id=MESSAGE_THREAD_ID,
-                    top_msg_id=MESSAGE_THREAD_ID,
-                )
-                await bot(
-                    functions.messages.SendMediaRequest(
-                        peer=CHAT_ID,
-                        media=media,
-                        reply_to=reply_to,
-                        message=parsed_caption,
-                        entities=entities,
-                    )
-                )
-        print("[+] Done!")
+            )
+            print(f"[+] Sent {os.path.basename(file_path)} directly to topic {MESSAGE_THREAD_ID}")
+        print("[+] Done! Topic-only upload completed")
+
 
 if __name__ == "__main__":
     try:

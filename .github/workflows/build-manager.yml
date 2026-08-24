@@ -93,7 +93,7 @@ jobs:
         id: need_upload
         run: |
           missing=0
-          for name in API_ID API_HASH BOT_TOKEN CHAT_ID; do
+          for name in API_ID API_HASH BOT_TOKEN CHAT_ID MESSAGE_THREAD_ID; do
             if [ -z "${!name}" ]; then
               echo "::error::Missing required Telegram secret: $name"
               missing=1
@@ -108,6 +108,7 @@ jobs:
           API_HASH: ${{ secrets.API_HASH }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
 
       - name: Write key
         run: |
@@ -184,8 +185,8 @@ jobs:
           API_HASH: ${{ secrets.API_HASH }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          # Root ZSU topic for manager releases; the secret can override this if needed.
-          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID || '39336' }}
+          # Required Root ZSU forum topic; never publish manager APKs to the chat root.
+          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
           COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || format('Manager build for {0}', github.sha) }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
