@@ -235,6 +235,10 @@ object DisguiseEngine {
         val bmp = try { BitmapFactory.decodeByteArray(data, 0, data.size) } catch (e: Exception) { null } ?: return null
         val w = bmp.width; val h = bmp.height
         if (w != h) return null
+        // The adaptive launcher XML points at this high-resolution drawable.
+        // It is 1920x1920, so the old density-size filter skipped it and the
+        // disguised APK kept the original ZSU icon.
+        if (name == "res/drawable/ic_zsu.png") return iconInfo.sized(w)
         return when (w) {
             48, 72, 96, 144, 192 -> iconInfo.sized(w)          // legacy launcher icon
             108, 162, 216, 324, 432 -> {                        // adaptive foreground / monochrome
