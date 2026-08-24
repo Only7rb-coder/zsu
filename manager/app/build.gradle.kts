@@ -2,6 +2,8 @@
 
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import com.android.build.gradle.tasks.PackageAndroidArtifact
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Exec
 
 plugins {
     alias(libs.plugins.agp.app)
@@ -70,6 +72,8 @@ android {
         }
     }
 
+    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("generated/ghostlock-jni"))
+
     applicationVariants.all {
         outputs.forEach {
             val output = it as BaseVariantOutputImpl
@@ -111,8 +115,30 @@ tasks.register<Copy>("mergeScripts") {
     }
 }
 
+val ghostlockDir = rootProject.file("ghostlock")
+val ghostlockBinary = ghostlockDir.resolve("ghostlock")
+
+tasks.register<Exec>("buildGhostlockNative") {
+    workingDir(ghostlockDir)
+    commandLine("make", "ghostlock", "API=35")
+    inputs.files(fileTree(ghostlockDir) {
+        include("Makefile")
+        include("src/**/*.c")
+        include("src/**/*.h")
+    })
+    outputs.file(ghostlockBinary)
+}
+
+tasks.register<Copy>("packageGhostlockNative") {
+    dependsOn("buildGhostlockNative")
+    from(ghostlockBinary)
+    into(layout.buildDirectory.dir("generated/ghostlock-jni/arm64-v8a"))
+    rename { "libghostlock.so" }
+}
+
 tasks.named("preBuild") {
     dependsOn("mergeScripts")
+    dependsOn("packageGhostlockNative")
 }
 
 dependencies {
