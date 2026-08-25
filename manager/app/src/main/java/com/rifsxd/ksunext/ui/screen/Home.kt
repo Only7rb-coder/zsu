@@ -29,7 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1465,7 +1465,8 @@ data class Contributor(
     val accountUrl: String,
     val role: String,
     val channelUrl: String,
-    val avatarRes: Int? = null
+    val avatarRes: Int? = null,
+    val discordUrl: String? = null
 )
 
 @Composable
@@ -1486,6 +1487,14 @@ fun ContributorsCard() {
             role = "ZSU Partner",
             channelUrl = "https://t.me/CheatNinja_TGs_Official",
             avatarRes = R.drawable.cheatninja_logo
+        ),
+        Contributor(
+            login = "@Vennom1533",
+            accountUrl = "https://t.me/Vennom1533",
+            role = "ZSU Contributor",
+            channelUrl = "https://t.me/Vennom1533",
+            avatarRes = R.drawable.vennom_logo,
+            discordUrl = "https://discord.gg/QfVMarPFD"
         )
     )
 
@@ -1506,7 +1515,10 @@ fun ContributorsCard() {
                 ContributorRow(
                     contributor = contributor,
                     onProfileClick = { safeOpenUri(zsuLinkContext, contributor.accountUrl) },
-                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.channelUrl) }
+                    onDonateClick = { safeOpenUri(zsuLinkContext, contributor.channelUrl) },
+                    onDiscordClick = contributor.discordUrl?.let { url ->
+                        { safeOpenUri(zsuLinkContext, url) }
+                    }
                 )
             }
         }
@@ -1517,7 +1529,8 @@ fun ContributorsCard() {
 private fun ContributorRow(
     contributor: Contributor,
     onProfileClick: () -> Unit,
-    onDonateClick: () -> Unit
+    onDonateClick: () -> Unit,
+    onDiscordClick: (() -> Unit)? = null
 ) {
     var imageLoadFailed by remember { mutableStateOf(false) }
 
@@ -1600,25 +1613,45 @@ private fun ContributorRow(
             }
         }
 
-        OutlinedButton(
-            onClick = onDonateClick,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_telegram),
-                contentDescription = stringResource(R.string.contributor_channel),
-                modifier = Modifier.size(13.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                text = stringResource(R.string.contributor_channel),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            OutlinedButton(
+                onClick = onDonateClick,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.height(30.dp),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_telegram),
+                    contentDescription = stringResource(R.string.contributor_channel),
+                    modifier = Modifier.size(13.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = stringResource(R.string.contributor_channel),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (onDiscordClick != null) {
+                OutlinedButton(
+                    onClick = onDiscordClick,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(30.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Text(
+                        text = "Discord",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
