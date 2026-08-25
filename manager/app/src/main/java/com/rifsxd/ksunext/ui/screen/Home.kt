@@ -1466,7 +1466,8 @@ data class Contributor(
     val role: String,
     val channelUrl: String,
     val avatarRes: Int? = null,
-    val discordUrl: String? = null
+    val discordUrl: String? = null,
+    val channelLabel: String = "Channel"
 )
 
 @Composable
@@ -1489,12 +1490,13 @@ fun ContributorsCard() {
             avatarRes = R.drawable.cheatninja_logo
         ),
         Contributor(
-            login = "@Vennom1533",
+            login = "Insight VIP",
             accountUrl = "https://t.me/Vennom1533",
-            role = "ZSU Contributor",
+            role = "ZSU Partner",
             channelUrl = "https://t.me/Vennom1533",
             avatarRes = R.drawable.vennom_logo,
-            discordUrl = "https://discord.gg/QfVMarPFD"
+            discordUrl = "https://discord.gg/QfVMarPFD",
+            channelLabel = "Owner"
         )
     )
 
@@ -1626,13 +1628,13 @@ private fun ContributorRow(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_telegram),
-                    contentDescription = stringResource(R.string.contributor_channel),
+                    contentDescription = contributor.channelLabel,
                     modifier = Modifier.size(13.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.width(5.dp))
                 Text(
-                    text = stringResource(R.string.contributor_channel),
+                    text = contributor.channelLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

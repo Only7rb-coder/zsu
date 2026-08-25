@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the Vennom1533 contributor.
-    return "1.3.2"
+    // User-facing release version containing the Insight VIP partner entry.
+    return "1.3.3"
 }
 
 subprojects {
