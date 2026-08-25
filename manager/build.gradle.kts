@@ -51,7 +51,7 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3330
+    val minimumCommitCountForRelease = 3331
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
