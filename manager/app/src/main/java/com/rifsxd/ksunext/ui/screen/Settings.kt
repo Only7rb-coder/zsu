@@ -55,6 +55,7 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.rifsxd.ksunext.BuildConfig
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.ghostlock.GhostlockAutoMode
 import com.rifsxd.ksunext.jailbreak.JailbreakMode
 import com.rifsxd.ksunext.ui.component.*
 import com.rifsxd.ksunext.ui.util.*
@@ -560,6 +561,30 @@ private fun SecurityCard(
                 val shouldEnforce = !checked
                 if (setSelinuxEnforce(shouldEnforce)) {
                     isSelinuxPermissive = !shouldEnforce
+                }
+            }
+
+            val autoGhostlockArmed = GhostlockAutoMode.isArmed(context)
+            var autoGhostlockEnabled by rememberSaveable {
+                mutableStateOf(GhostlockAutoMode.isEnabled(context))
+            }
+            SwitchItem(
+                icon = Icons.Filled.Refresh,
+                title = stringResource(R.string.settings_auto_ghostlock),
+                summary = stringResource(
+                    if (autoGhostlockArmed) {
+                        R.string.settings_auto_ghostlock_summary
+                    } else {
+                        R.string.settings_auto_ghostlock_locked_summary
+                    }
+                ),
+                checked = autoGhostlockEnabled,
+                enabled = autoGhostlockArmed,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { enabled ->
+                if (GhostlockAutoMode.setEnabled(context, enabled)) {
+                    autoGhostlockEnabled = enabled
                 }
             }
 

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.rifsxd.ksunext.R
+import com.rifsxd.ksunext.ghostlock.GhostlockAutoMode
 import com.rifsxd.ksunext.ghostlock.GhostlockRunner
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,9 @@ private object BlRootOperationStore {
             try {
                 val result = withContext(Dispatchers.IO) {
                     GhostlockRunner.run(appContext)
+                }
+                if (result.success) {
+                    GhostlockAutoMode.onManualSuccess(appContext)
                 }
                 statusMessage.value = when {
                     result.success -> appContext.getString(R.string.ghostlock_success)

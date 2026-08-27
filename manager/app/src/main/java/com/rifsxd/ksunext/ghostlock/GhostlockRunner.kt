@@ -59,7 +59,7 @@ object GhostlockRunner {
 
     fun isKernelSupported(release: String): Boolean = supportedKernels.contains(release)
 
-    fun run(context: Context): Result {
+    private fun runOnce(context: Context): Result {
         val workDir = File(context.filesDir, WORK_DIR_NAME)
         if (!workDir.exists() && !workDir.mkdirs()) {
             return Result(false, false, "Unable to create BL Root working directory: ${workDir.absolutePath}")
@@ -135,5 +135,22 @@ object GhostlockRunner {
         val prefix = if (!finished) "BL Root timed out after ${TIMEOUT_SECONDS}s" else "BL Root exited with code $exitCode"
         val fullOutput = listOf(prefix, finalOutput).filter { it.isNotBlank() }.joinToString("\n")
         return Result(finished && exitCode == 0, !finished, fullOutput)
+    }
+
+    /**
+     * A single bounded retry handles transient heap-spray/task-discovery misses.
+     * Never retry a timeout, because that may indicate a stalled or unstable
+     * kernel path rather than a normal first-attempt miss.
+     */
+    fun run(context: Context): Result {
+        val first = runOnce(context)
+        if (first.success || first.timedOut) return first
+        Thread.sleep(750L)
+        val second = runOnce(context)
+        return if (second.success) {
+            second.copy(output = "First attempt failed; controlled retry succeeded.\n${second.output}")
+        } else {
+            second.copy(output = "First attempt failed; controlled retry also failed.\n${second.output}")
+        }
     }
 }
