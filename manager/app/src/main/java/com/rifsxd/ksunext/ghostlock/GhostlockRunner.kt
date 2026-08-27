@@ -30,6 +30,8 @@ object GhostlockRunner {
         "6.12.23-android16-5-gf1bdb13583da-ab13761046-4k",
         "6.12.30-android16-5-g6e872b4863d6-ab13847919-4k",
         "6.12.38-android16-5-g844001fb8721-ab14552068-4k",
+        // UNVERIFIED TEST ALIAS: reuses the existing 6.12.38 offsets.
+        "6.12.38-android16-5-g665eafb62659-ab14778838-4k",
         "6.6.102-android15-8-gb01b41c2647c-ab15574720-4k",
         "6.6.102-android15-8-gfe76d1bc97fd-ab14689815-4k",
         "6.6.118-android15-8-g2e6b9c3812c5-ab15114928-4k",
