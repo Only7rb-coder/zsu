@@ -15,10 +15,9 @@ object GhostlockRunner {
     private const val KSUD_NAME = "libksud.so"
     private const val WORK_DIR_NAME = "ghostlock"
     private const val LOG_NAME = ".ghostlock_ksu.log"
-    // The native path can retry W1/W2/W3 and then wait for the independent
-    // KernelSU handoff. Keep a bounded four-minute deadline so slow devices do
-    // not get cut off while still failing a genuinely stalled attempt promptly.
-    private const val TIMEOUT_SECONDS = 240L
+    // The native path has bounded internal retries and a short KernelSU handoff.
+    // Cap the app-side wait so a stalled attempt cannot occupy the UI for minutes.
+    private const val TIMEOUT_SECONDS = 90L
 
     /** Exact uname -r values for which the bundled offset tables exist. */
     val supportedKernels: Set<String> = setOf(
