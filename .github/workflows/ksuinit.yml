@@ -24,7 +24,13 @@ jobs:
         workspaces: userspace/ksuinit
         cache-targets: false
 
+    - name: Configure GitHub dependency fetch
+      run: |
+        git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
     - name: Build ksuinit
+      env:
+        CARGO_NET_GIT_FETCH_WITH_CLI: "true"
       run: |
         LLVM_BIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
         export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$LLVM_BIN/aarch64-linux-android26-clang"
