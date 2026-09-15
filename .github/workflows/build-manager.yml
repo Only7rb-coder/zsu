@@ -95,14 +95,15 @@ jobs:
           missing=0
           for name in API_ID API_HASH BOT_TOKEN MESSAGE_THREAD_ID; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Telegram secret: $name"
+              echo "::warning::Missing Telegram secret: $name"
               missing=1
             fi
           done
           if [ "$missing" -ne 0 ]; then
-            exit 1
+            echo "UPLOAD=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "UPLOAD=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "UPLOAD=true" >> "$GITHUB_OUTPUT"
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
