@@ -89,27 +89,6 @@ jobs:
           chmod +x spoof
           ./spoof
 
-      - name: Setup need_upload
-        id: need_upload
-        run: |
-          missing=0
-          for name in API_ID API_HASH BOT_TOKEN MESSAGE_THREAD_ID; do
-            if [ -z "${!name}" ]; then
-              echo "::warning::Missing Telegram secret: $name"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "UPLOAD=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "UPLOAD=true" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          API_ID: ${{ secrets.API_ID }}
-          API_HASH: ${{ secrets.API_HASH }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
-
       - name: Write key
         run: |
           if [ ! -z "${{ secrets.KEYSTORE }}" ]; then
@@ -133,6 +112,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The legacy "tools" package was removed from Google's SDK repository.
+          packages: platform-tools
 
       - name: Download arm64 ksud
         uses: actions/download-artifact@v7
@@ -169,40 +151,3 @@ jobs:
         with:
           name: ${{ matrix.spoofed && 'mappings-spoofed' || 'mappings' }}
           path: "manager/app/build/outputs/mapping/release/"
-
-      - name: Bot session cache
-        if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'
-        id: bot_session_cache
-        uses: actions/cache@v4
-        with:
-          path: scripts/ksubot.session
-          key: ${{ runner.os }}-bot-session
-
-      - name: Upload to telegram
-        if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'
-        env:
-          API_ID: ${{ secrets.API_ID }}
-          API_HASH: ${{ secrets.API_HASH }}
-          # Root ZSU forum group from https://t.me/c/2012558636/39336.
-          CHAT_ID: -1002012558636
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          # Required Root ZSU forum topic; never publish manager APKs to the chat root.
-          MESSAGE_THREAD_ID: ${{ secrets.MESSAGE_THREAD_ID }}
-          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message || format('Manager build for {0}', github.sha) }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: ${{ matrix.spoofed && 'Stable Manager Build (Spoofed)' || 'Stable Manager Build (Normal)' }}
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          export VERSION=$(git rev-list --count HEAD)
-          mapfile -t APKS < <(find ./app/build/outputs/apk/release -maxdepth 1 -type f -name "*.apk" -print | sort)
-          if [ "${#APKS[@]}" -ne 1 ]; then
-            echo "::error::Expected exactly one manager APK, found ${#APKS[@]}"
-            printf '%s\n' "${APKS[@]}"
-            exit 1
-          fi
-          echo "[+] Uploading ${APKS[0]} to Telegram"
-          pip3 install telethon
-          python3 "$GITHUB_WORKSPACE/scripts/ksunextbot.py" "${APKS[0]}"
-          echo "[+] Telegram uploader completed successfully"
