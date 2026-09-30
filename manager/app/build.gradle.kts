@@ -125,6 +125,7 @@ tasks.register<Exec>("buildGhostlockNative") {
         include("Makefile")
         include("src/**/*.c")
         include("src/**/*.h")
+        include("src/**/*.json")
     })
     outputs.file(ghostlockBinary)
 }

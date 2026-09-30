@@ -1,5 +1,4 @@
-/* UNVERIFIED TEST ALIAS: 6.12.38-android16-5-g665eafb62659-ab14778838-4k */
-/* Reuses the existing 6.12.38 offsets from g844001fb8721. Validate on-device. */
+/* 6.12.38-android16-5-g665eafb62659-ab14778838-4k */
 
 OFFSETS_ENTRY(
     "6.12.38-android16-5-g665eafb62659-ab14778838-4k",
@@ -16,6 +15,9 @@ OFFSETS_ENTRY(
     .off_slide_loggers_0_1 = 0x024020e8,
 ),
 
-/* These offsets are copied from the existing 6.12.38 entry and are not
- * verified for this build hash. Replace with device-derived values if BL Root
- * fails or behaves unexpectedly on the target device. */
+/* BTF reference (runtime uses target.h defaults): */
+/* #define STRUCT_PAGE_SIZE 0x40 */
+/* #define STRUCT_PAGE_COMPOUND_HEAD 0x8 */
+/* #define STRUCT_PAGE_TYPE 0x30 */
+/* #define STRUCT_SLAB_CACHE 0x8 */
+/* #define STRUCT_MM_STRUCT 0x4C0 */

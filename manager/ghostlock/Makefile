@@ -9,24 +9,34 @@ ifeq ($(OS),Windows_NT)
   NDK_CC := $(NDK_ROOT)/toolchains/llvm/prebuilt/$(PREBUILT)/bin/$(CLANG_BASE).cmd
 else
   NDK_ROOT ?= $(or $(ANDROID_NDK_HOME),$(ANDROID_NDK_ROOT))
-  PREBUILT := linux-x86_64
+  UNAME_S := $(shell uname -s)
+  PREBUILT := $(if $(filter Darwin,$(UNAME_S)),darwin-x86_64,linux-x86_64)
   NDK_CC := $(NDK_ROOT)/toolchains/llvm/prebuilt/$(PREBUILT)/bin/aarch64-linux-android$(API)-clang
 endif
 
 SRCS := \
   src/core/main.c \
+  src/core/address_space.c \
+  src/core/heap_context.c \
+  src/core/pi_race.c \
+  src/core/route_controller.c \
+  src/core/tcp_zerocopy_route.c \
+  src/core/select_stack_route.c \
+  src/core/multicast_waiter_route.c \
+  src/core/payload_builder.c \
+  src/core/runtime_config.c \
   src/core/offsets_json.c \
   src/core/util.c \
   src/core/fops.c
 
-# Headers also trigger a rebuild (e.g. a freshly --register-ed src/kernels/<release>/offsets.h).
-HDRS := $(wildcard src/core/*.h src/core/*/*.h src/kernels/*.h src/kernels/*/*.h)
+# Native interface and target headers also trigger a rebuild.
+HDRS := $(wildcard src/core/*.h src/core/*/*.h)
 
 # Device offsets are selected at runtime from uname -r.
 TARGET_CONFIG ?= target.h
 
 CFLAGS = -O2 -flto -Wall -Wno-unused-parameter -Wno-sign-compare -Wno-unused-function \
-  -Isrc/core -Isrc/kernels -DTARGET_CONFIG_H=\"$(TARGET_CONFIG)\"
+  -Isrc/core -DTARGET_CONFIG_H=\"$(TARGET_CONFIG)\"
 LDFLAGS := -fPIE -pie -pthread -flto
 
 .PHONY: all clean product
