@@ -3,6 +3,7 @@ package com.rifsxd.ksunext.ui.screen
 import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
@@ -47,6 +51,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ghostlock.GhostlockAutoMode
+import com.rifsxd.ksunext.ghostlock.GhostlockCpuPairCatalog
 import com.rifsxd.ksunext.ghostlock.GhostlockRunner
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import kotlinx.coroutines.CoroutineScope
@@ -113,7 +118,15 @@ fun GhostlockScreen() {
     val context = LocalContext.current
     val kernelRelease = System.getProperty("os.version", "unknown")
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
-    val kernelSupported = GhostlockRunner.isKernelSupported(kernelRelease)
+    val kernelSupported = GhostlockRunner.isKernelSupported(context, kernelRelease)
+    val cpuOptions = remember { GhostlockCpuPairCatalog.options() }
+    var selectedCpuPairIndex by rememberSaveable {
+        mutableIntStateOf(
+            cpuOptions.indexOfFirst { it.pair == GhostlockCpuPairCatalog.selected(context, cpuOptions) }
+                .coerceAtLeast(0),
+        )
+    }
+    var cpuMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val canRun = abiSupported && kernelSupported
     val rootPresent = remember {
         runCatching { rootAvailable() }.getOrDefault(false)
@@ -215,6 +228,38 @@ fun GhostlockScreen() {
                     MaterialTheme.colorScheme.error
                 }
             )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ghostlock_cpu_pair_label),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Box {
+                        TextButton(onClick = { cpuMenuExpanded = true }) {
+                            Text(cpuOptions.getOrNull(selectedCpuPairIndex)?.label ?: "0,1")
+                        }
+                        DropdownMenu(
+                            expanded = cpuMenuExpanded,
+                            onDismissRequest = { cpuMenuExpanded = false },
+                        ) {
+                            cpuOptions.forEachIndexed { index, option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        selectedCpuPairIndex = index
+                                        GhostlockCpuPairCatalog.save(context, option.pair)
+                                        cpuMenuExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Button(
                 onClick = { showConfirmation = true },
