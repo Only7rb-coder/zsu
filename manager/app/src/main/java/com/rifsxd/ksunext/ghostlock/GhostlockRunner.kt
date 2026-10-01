@@ -52,10 +52,14 @@ object GhostlockRunner {
                 .directory(workDir)
                 .redirectErrorStream(true)
                 .apply {
-                    environment()["GHOSTLOCK_HOME"] = workDir.absolutePath
-                    environment()["TMPDIR"] = workDir.absolutePath
-                    environment()["HOME"] = workDir.absolutePath
-                    environment()["GHOSTLOCK_KSUD"] = packagedKsud.absolutePath
+                    val env = environment()
+                    env["GHOSTLOCK_HOME"] = workDir.absolutePath
+                    env["TMPDIR"] = workDir.absolutePath
+                    env["HOME"] = workDir.absolutePath
+                    env["GHOSTLOCK_KSUD"] = packagedKsud.absolutePath
+                    // The native runtime applies explicit CPU choices from these variables.
+                    env["GHOSTLOCK_CORE"] = cpuPair.main.toString()
+                    env["GHOSTLOCK_CONSUMER_CORE"] = cpuPair.consumer.toString()
                 }
                 .start()
         } catch (error: IOException) {
