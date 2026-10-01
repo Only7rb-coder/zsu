@@ -124,6 +124,8 @@
   <string name="failed_to_update_sepolicy">更新 %s 的 SELinux 规则失败</string>
   <string name="su_not_allowed">无法授予 %s 超级用户权限</string>
   <string name="module_changelog">更新日志</string>
+  <string name="ghostlock_device">设备</string>
+  <string name="ghostlock_soc">SoC</string>
   <string name="settings_profile_template">App Profile 模版</string>
   <string name="settings_profile_template_summary">管理本地和在线的 App Profile 模版。</string>
   <string name="app_profile_template_create">创建模板</string>
