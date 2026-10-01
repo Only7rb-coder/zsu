@@ -127,6 +127,7 @@
     <string name="ghostlock_root_state">ZSU root state</string>
     <string name="ghostlock_rooted">Root available</string>
     <string name="ghostlock_non_rooted">Not rooted</string>
+    <string name="ghostlock_cpu_pair_label">CPU cores</string>
     <string name="ghostlock_ready_message">The exact kernel release is included in the bundled offset table. You can run BL Root from either rooted or non-rooted state.</string>
     <string name="ghostlock_unsupported_message">This exact kernel release is not included in the bundled offset table. The Run button is disabled to avoid an unsafe attempt.</string>
     <string name="ghostlock_abi_unsupported_message">This manager build includes the BL Root payload for ARM64 devices only. The tab remains visible, but execution is disabled on this ABI.</string>
