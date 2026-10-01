@@ -2,6 +2,7 @@ package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,6 +118,8 @@ private object BlRootOperationStore {
 fun GhostlockScreen() {
     val context = LocalContext.current
     val kernelRelease = System.getProperty("os.version", "unknown")
+    val deviceName = remember { resolveDeviceName() }
+    val socName = remember { resolveSocName() }
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
     val kernelSupported = GhostlockRunner.isKernelSupported(context, kernelRelease)
     val cpuOptions = remember { GhostlockCpuPairCatalog.options() }
@@ -203,6 +206,8 @@ fun GhostlockScreen() {
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace
                     )
+                    InfoRow(stringResource(R.string.ghostlock_device), deviceName)
+                    InfoRow(stringResource(R.string.ghostlock_soc), socName)
                     StatusRow(
                         icon = Icons.Filled.Lock,
                         label = stringResource(R.string.ghostlock_root_state),
@@ -229,7 +234,10 @@ fun GhostlockScreen() {
                 }
             )
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -311,4 +319,37 @@ private fun StatusRow(
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
         Text(value, color = valueColor, style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun resolveDeviceName(): String =
+    Build.MODEL.trim().takeUnless { it.isBlank() || it.equals("unknown", ignoreCase = true) }
+        ?: Build.DEVICE.trim().takeUnless { it.isBlank() || it.equals("unknown", ignoreCase = true) }
+        ?: "Unknown"
+
+private fun resolveSocName(): String {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val model = Build.SOC_MODEL.trim()
+        if (model.isNotBlank() && !model.equals("unknown", ignoreCase = true)) {
+            val manufacturer = Build.SOC_MANUFACTURER.trim()
+            val vendor = if (manufacturer.contains("qualcomm", ignoreCase = true)) "QTI" else manufacturer
+            return listOf(vendor, model).filter(String::isNotBlank).joinToString(" ")
+        }
+    }
+    return Build.HARDWARE.trim().takeUnless { it.isBlank() || it.equals("unknown", ignoreCase = true) }
+        ?: "Unknown"
 }
