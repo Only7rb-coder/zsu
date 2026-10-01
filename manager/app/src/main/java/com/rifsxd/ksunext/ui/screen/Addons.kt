@@ -58,9 +58,17 @@ private const val TEESIMULATOR_RS_V6_0_1_324_URL =
 private const val SENSITIVE_PROPS_V6_5_0_60608_URL =
     "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.4/sensitive-props-v6.5.0-60608-release.zip"
 
+private const val ZYGISK_NEXT_1_5_0_URL =
+    "https://github.com/LSPosed/ZygiskNext/releases/download/1.5.0/Zygisk-Next-1.5.0-843-5217106-release.zip"
+
 private val HIDE_UNLOCKED_MODULES = listOf(
-    ModuleSpec("Zygisk Next", "Dr-TSNG/ZygiskNext") {
-        it.endsWith(".zip") && it.contains("release")
+    ModuleSpec(
+        "Zygisk Next 1.5.0",
+        "LSPosed/ZygiskNext",
+        preferredTag = "1.5.0",
+        fixedUrl = ZYGISK_NEXT_1_5_0_URL
+    ) {
+        it == "Zygisk-Next-1.5.0-843-5217106-release.zip"
     },
     ModuleSpec(
         "TEESimulator-RS v6.0.1-324",
@@ -264,7 +272,13 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
     var installProgress by AddonOperationStore.installProgress
     var installStatus by AddonOperationStore.installStatus
 
-    fun appendLog(s: String) { log += s + "\n" }
+    fun appendLog(s: String) {
+        // Some module installers print escaped newlines (\\n) instead of real ones.
+        // Decode them before displaying the output so the log never becomes a single
+        // unreadable terminal-width line like the old screenshot.
+        val readable = s.replace("\\r", "\r").replace("\\n", "\n")
+        log += readable.trimEnd() + "\n"
+    }
     fun updateProgress(progress: Float, status: String) {
         scope.launch {
             installProgress = progress.coerceIn(0f, 1f)
@@ -557,12 +571,30 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 ) {
-                    Text(
-                        text = log,
-                        modifier = Modifier.padding(12.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp
-                    )
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Installer output",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = log,
+                                modifier = Modifier.fillMaxWidth(),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                                softWrap = true
+                            )
+                        }
+                    }
                 }
             }
         }
