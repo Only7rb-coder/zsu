@@ -57,7 +57,7 @@ fun getVersionCode(): Int {
 
 fun getVersionName(): String {
     // User-facing release version containing the Insight VIP partner entry.
-    return "1.3.13"
+    return "1.3.14"
 }
 
 subprojects {

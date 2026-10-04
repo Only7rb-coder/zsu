@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.Parcelable
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -451,21 +452,36 @@ private object FlashOperationStore {
         showFloatAction.value = false
         flashing.value = FlashingStatus.FLASHING
         operationJob = scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                flashIt(
-                    task,
-                    onStdout = { line ->
-                        val output = "$line\\n"
-                        text.value = if (output.startsWith("\\u001b[H\\u001b[J")) {
-                            output.substring(6)
-                        } else {
-                            text.value + output
+            val result = try {
+                withContext(Dispatchers.IO) {
+                    flashIt(
+                        task,
+                        onStdout = { line ->
+                            val output = "$line\\n"
+                            // Shell callbacks are delivered from a worker thread. Compose
+                            // snapshot state must only be read and written on the main thread.
+                            scope.launch(Dispatchers.Main.immediate) {
+                                text.value = if (output.startsWith("\\u001b[H\\u001b[J")) {
+                                    output.substring(6)
+                                } else {
+                                    text.value + output
+                                }
+                                logContent.value += output
+                            }
+                        },
+                        onStderr = { line ->
+                            scope.launch(Dispatchers.Main.immediate) {
+                                logContent.value += "$line\\n"
+                            }
                         }
-                        logContent.value += output
-                    },
-                    onStderr = { line ->
-                        logContent.value += "$line\\n"
-                    }
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("FlashOperation", "Flash operation failed", e)
+                FlashResult(
+                    code = 1,
+                    err = e.message ?: e.javaClass.simpleName,
+                    showReboot = false
                 )
             }
             if (result.code != 0) {
