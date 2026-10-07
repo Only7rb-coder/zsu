@@ -13,7 +13,9 @@ object GhostlockRunner {
     private const val WORK_DIR_NAME = "ghostlock"
     private const val LOG_NAME = ".ghostlock_ksu.log"
     private const val PROFILE_NAME = "active-profile.json"
-    private const val TIMEOUT_SECONDS = 90L
+    // Profiles allow heap preparation to run for up to 240 seconds. Keep the
+    // outer watchdog longer so it cannot stop a valid slow run prematurely.
+    private const val TIMEOUT_SECONDS = 300L
 
     data class Result(val success: Boolean, val timedOut: Boolean, val output: String)
 
