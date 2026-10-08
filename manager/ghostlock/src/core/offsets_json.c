@@ -246,6 +246,7 @@ static const struct {
   {"kernel_major", offsetof(struct kernel_offsets, kernel_major), SCALAR_U8},
   {"requires_shizuku", offsetof(struct kernel_offsets, requires_shizuku), SCALAR_U8},
   {"kernel_phys_load", offsetof(struct kernel_offsets, kernel_phys_load), SCALAR_U64},
+  {"kernel_phys_offset", offsetof(struct kernel_offsets, kernel_phys_offset), SCALAR_U64},
   {"pselect_waiter_shift", offsetof(struct kernel_offsets, pselect_waiter_shift), SCALAR_I32},
   {"mcast_waiter_off", offsetof(struct kernel_offsets, mcast_waiter_off), SCALAR_I32},
   {"mcast_buffer_size", offsetof(struct kernel_offsets, mcast_buffer_size), SCALAR_U32},

@@ -5,6 +5,7 @@
 int main(void) {
   struct kernel_offsets decoded = {
       .kernel_major = 5,
+      .kernel_phys_offset = 0x40000000,
       .compact_waiter = 1,
       .pselect_waiter_shift = 16,
       .mcast_waiter_off = 32,
@@ -38,6 +39,7 @@ int main(void) {
       !target_profile_supports_tcp_zerocopy(&profile) ||
       !target_profile_supports_select_stack(&profile) ||
       multicast.buffer_size != 128 || multicast.waiter_offset != 32 ||
+      profile.values.kernel_phys_offset != 0x40000000 ||
       multicast.lock_slot_count != 4 || select.waiter_shift != 16 ||
       !select.compact_waiter || !tcp.compact_waiter ||
       !execution || execution->heap_prepare_max_attempts != 7) {

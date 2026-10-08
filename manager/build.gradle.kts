@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the GhostLock watchdog fix.
-    return "1.3.15"
+    // User-facing release version containing the GhostLock profile sync and address-base fix.
+    return "1.3.16"
 }
 
 subprojects {

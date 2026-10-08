@@ -81,6 +81,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Run GhostLock host regression tests
+        run: make -C ghostlock address-space-host-test profile-catalog-host-test
+
       - name: Spoof Package ID
         if: matrix.spoofed == true
         run: |
