@@ -32,6 +32,7 @@ struct kernel_offsets {
   uint8_t requires_shizuku;
   uint16_t _header_pad;
   uint64_t kernel_phys_load;
+  uint64_t kernel_phys_offset;
   int pselect_waiter_shift;
   int mcast_waiter_off;
   uint32_t mcast_buffer_size, mcast_task_offset, mcast_lock_offset;

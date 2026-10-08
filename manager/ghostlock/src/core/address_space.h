@@ -16,6 +16,7 @@ typedef enum target_soc_family {
 typedef struct resolved_addresses {
   TargetSocFamily soc;
   uint64_t kernel_phys_load;
+  uint64_t kernel_phys_offset;
   uintptr_t init_cred_image;
 } ResolvedAddresses;
 

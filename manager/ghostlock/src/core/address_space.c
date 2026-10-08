@@ -51,6 +51,13 @@ int resolved_addresses_init_for_soc(ResolvedAddresses *out,
   } else {
     out->kernel_phys_load = P0_KERNEL_PHYS_LOAD;
   }
+  out->kernel_phys_offset = values->kernel_phys_offset
+                                ? values->kernel_phys_offset
+                                : P0_PHYS_OFFSET;
+  if (out->kernel_phys_offset > out->kernel_phys_load) {
+    errno = EINVAL;
+    return -1;
+  }
   return 0;
 }
 
@@ -64,7 +71,7 @@ uintptr_t resolved_addresses_data_alias(const ResolvedAddresses *addresses,
   if (!addresses) return 0;
   uintptr_t offset = image_addr - KIMAGE_TEXT_BASE;
   uintptr_t physical = addresses->kernel_phys_load + offset;
-  return ((physical - P0_PHYS_OFFSET) | P0_PAGE_OFFSET);
+  return ((physical - addresses->kernel_phys_offset) | P0_PAGE_OFFSET);
 }
 
 const char *resolved_addresses_soc_name(const ResolvedAddresses *addresses,
