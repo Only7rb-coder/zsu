@@ -32,7 +32,9 @@ object GhostlockRunner {
         if (!packagedBinary.isFile) {
             return Result(false, false, "GhostLock payload is not present in this APK")
         }
-        val release = System.getProperty("os.version", "").orEmpty()
+        // Match the native payload's uname(2) check; os.version can be stale
+        // or "unknown" on Android, including some RedMagic builds.
+        val release = GhostlockKernelRelease.current()
         if (!isKernelSupported(context, release)) {
             return Result(false, false, "No bundled GhostLock profile for $release")
         }

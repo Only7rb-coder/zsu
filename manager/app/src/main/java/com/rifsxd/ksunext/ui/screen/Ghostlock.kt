@@ -53,6 +53,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ghostlock.GhostlockAutoMode
 import com.rifsxd.ksunext.ghostlock.GhostlockCpuPairCatalog
+import com.rifsxd.ksunext.ghostlock.GhostlockKernelRelease
 import com.rifsxd.ksunext.ghostlock.GhostlockRunner
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import kotlinx.coroutines.CoroutineScope
@@ -117,7 +118,7 @@ private object BlRootOperationStore {
 @Composable
 fun GhostlockScreen() {
     val context = LocalContext.current
-    val kernelRelease = System.getProperty("os.version", "unknown")
+    val kernelRelease = GhostlockKernelRelease.current()
     val deviceName = remember { resolveDeviceName() }
     val socName = remember { resolveSocName() }
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }

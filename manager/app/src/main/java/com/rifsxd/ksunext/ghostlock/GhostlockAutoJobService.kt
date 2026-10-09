@@ -18,7 +18,7 @@ class GhostlockAutoJobService : JobService() {
         val supportedAbi = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
         val supportedKernel = GhostlockRunner.isKernelSupported(
             this,
-            System.getProperty("os.version", "unknown")
+            GhostlockKernelRelease.current()
         )
         if (!supportedAbi || !supportedKernel) return false
         jobScope.launch {

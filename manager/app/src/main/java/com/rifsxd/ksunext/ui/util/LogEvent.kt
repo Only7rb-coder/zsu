@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.system.Os
 import com.rifsxd.ksunext.Natives
+import com.rifsxd.ksunext.ghostlock.GhostlockKernelRelease
 import com.rifsxd.ksunext.ui.screen.getManagerVersion
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.ShellUtils
@@ -70,7 +71,7 @@ fun getBugreportFile(context: Context): File {
     // basic information
     val buildInfo = File(bugreportDir, "basic.txt")
     PrintWriter(FileWriter(buildInfo)).use { pw ->
-        pw.println("Kernel: ${System.getProperty("os.version")}")
+        pw.println("Kernel: ${GhostlockKernelRelease.current()}")
         pw.println("BRAND: " + Build.BRAND)
         pw.println("MODEL: " + Build.MODEL)
         pw.println("PRODUCT: " + Build.PRODUCT)
@@ -113,4 +114,3 @@ fun getBugreportFile(context: Context): File {
 
     return targetFile
 }
-
