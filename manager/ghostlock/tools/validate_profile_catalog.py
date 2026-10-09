@@ -88,6 +88,10 @@ def main() -> int:
 
             resolved = deep_merge({"release": release, "execution": defaults["execution"]}, profile)
             resolved["schema_version"] = 1
+            if not isinstance(resolved.get("execution"), dict):
+                raise SystemExit(
+                    f"profile does not resolve execution defaults: {filename}"
+                )
             resolved_path = temp_dir / f"{i:03d}.json"
             resolved_path.write_text(json.dumps(resolved), encoding="utf-8")
             resolved_files.append(resolved_path)

@@ -8,6 +8,8 @@ Fifteen profiles were added to the ZSU JSON catalog. The native JSON loader cons
 
 ZSU's native address-space conversion previously hard-coded `P0_PHYS_OFFSET`, even though supported app profiles can carry a different `kernel_phys_offset`. The profile transport, parser, and resolved address state now carry that optional value. Existing profiles omit it and continue to use the old target constant.
 
+Profiles may omit the `execution` object because ZSU supplies shared execution defaults. Availability checks must resolve and validate the merged profile, not validate the raw JSON object. This matters for the RedMagic 9(S) Pro profile and fourteen other imported profiles that intentionally rely on those defaults.
+
 ## Deliberate exclusions
 
 - `5.15.189-android13-8-00004-g1c3825f8ac0a-ab14110541` (Sony Xperia 1 V SOG10) is excluded because its source profile explicitly says the full device gate is pending.
@@ -16,4 +18,5 @@ ZSU's native address-space conversion previously hard-coded `P0_PHYS_OFFSET`, ev
 ## Verification status
 
 - `make -C manager/ghostlock address-space-host-test profile-catalog-host-test` checks custom/default physical-base translation, index uniqueness and file/release consistency, required profile fields, and every fully resolved profile through the native JSON loader.
+- The catalog validator also checks that profiles without an `execution` object receive a valid merged execution section before native loading.
 - These host checks are necessary but not a substitute for a ZSU build on Android and a real-device gate for each newly enabled profile. No Android SDK or attached device was available in the sandbox during this work. Do not treat this branch as device-validated solely because host checks pass.
