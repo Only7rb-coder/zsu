@@ -2,8 +2,10 @@
 set -eu
 
 GKI_ROOT=$(pwd)
-OWNER="KernelSU-Next"
-REPO="$OWNER"
+# The GKI integration must use the private ZSU fork so the kernel driver
+# and the ZSU manager share the same signing and UAPI expectations.
+OWNER="Only7rb-coder"
+REPO="ZSU"
 
 display_usage() {
     echo "Usage: $0 [--cleanup | <commit-or-tag>]"
