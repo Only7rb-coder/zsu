@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the generic GhostLock uname matching fix.
-    return "1.3.17"
+    // Fixes literal escape sequences in the flash console output.
+    return "1.3.19"
 }
 
 subprojects {

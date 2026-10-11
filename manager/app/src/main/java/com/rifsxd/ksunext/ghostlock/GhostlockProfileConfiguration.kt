@@ -10,14 +10,10 @@ internal object GhostlockProfileConfiguration {
     private const val BUILTIN_DIRECTORY = "kernel_profiles"
 
     fun hasProfile(context: Context, release: String): Boolean = runCatching {
-        val index = readObject(context, "${BUILTIN_DIRECTORY}/index.json")
-        if (index.optInt("schema_version") != 1) return@runCatching false
-        val entry = findProfile(index.optJSONArray("profiles"), release) ?: return@runCatching false
-        val profile = readObject(context, "$BUILTIN_DIRECTORY/${entry.getString("file")}")
-        if (profile.optInt("schema_version") != 1 || profile.optString("release") != release) {
-            return@runCatching false
-        }
-        validate(profile, release)
+        // Profiles may omit shared execution settings. Availability must use
+        // the same defaults merge as execution, otherwise valid profiles are
+        // shown as unsupported even though resolve() can run them safely.
+        resolve(context, release)
         true
     }.getOrDefault(false)
 

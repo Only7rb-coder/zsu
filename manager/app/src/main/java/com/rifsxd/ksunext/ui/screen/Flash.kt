@@ -457,11 +457,11 @@ private object FlashOperationStore {
                     flashIt(
                         task,
                         onStdout = { line ->
-                            val output = "$line\\n"
+                            val output = "$line\n"
                             // Shell callbacks are delivered from a worker thread. Compose
                             // snapshot state must only be read and written on the main thread.
                             scope.launch(Dispatchers.Main.immediate) {
-                                text.value = if (output.startsWith("\\u001b[H\\u001b[J")) {
+                                text.value = if (output.startsWith("\u001b[H\u001b[J")) {
                                     output.substring(6)
                                 } else {
                                     text.value + output
@@ -471,7 +471,7 @@ private object FlashOperationStore {
                         },
                         onStderr = { line ->
                             scope.launch(Dispatchers.Main.immediate) {
-                                logContent.value += "$line\\n"
+                                logContent.value += "$line\n"
                             }
                         }
                     )
@@ -485,10 +485,10 @@ private object FlashOperationStore {
                 )
             }
             if (result.code != 0) {
-                text.value += "Error code: ${result.code}.\\n ${result.err} Please save and check the log.\\n"
+                text.value += "Error code: ${result.code}.\n ${result.err} Please save and check the log.\n"
             }
             if (result.showReboot) {
-                text.value += "\\n\\n\\n"
+                text.value += "\n\n\n"
                 showFloatAction.value = true
             }
             flashing.value = if (result.code == 0) FlashingStatus.SUCCESS else FlashingStatus.FAILED
