@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // User-facing release version containing the GhostLock merged-defaults fix.
-    return "1.3.18"
+    // Fixes literal escape sequences in the flash console output.
+    return "1.3.19"
 }
 
 subprojects {
