@@ -41,8 +41,8 @@ import kotlin.math.roundToInt
 
 /**
  * ZSU "Addons" tab: one-tap installers for common root-hiding module sets.
- * Modules are always fetched from the latest matching GitHub release, including the
- * TEESimulator-RS Canary pre-release channel.
+ * Modules are fetched from their preferred release when configured, otherwise from the
+ * latest matching GitHub release, including the TEESimulator-RS Canary pre-release channel.
  */
 private data class ModuleSpec(
     val label: String,
@@ -58,17 +58,12 @@ private const val TEESIMULATOR_RS_V6_0_1_324_URL =
 private const val SENSITIVE_PROPS_V6_5_0_60608_URL =
     "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.4/sensitive-props-v6.5.0-60608-release.zip"
 
-private const val ZYGISK_NEXT_1_5_0_URL =
-    "https://github.com/LSPosed/ZygiskNext/releases/download/1.5.0/Zygisk-Next-1.5.0-843-5217106-release.zip"
-
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec(
-        "Zygisk Next 1.5.0",
-        "LSPosed/ZygiskNext",
-        preferredTag = "1.5.0",
-        fixedUrl = ZYGISK_NEXT_1_5_0_URL
+        "Zygisk Next",
+        "LSPosed/ZygiskNext"
     ) {
-        it == "Zygisk-Next-1.5.0-843-5217106-release.zip"
+        it.startsWith("Zygisk-Next-") && it.endsWith("-release.zip")
     },
     ModuleSpec(
         "TEESimulator-RS v6.0.1-324",
@@ -91,7 +86,7 @@ private val HIDE_UNLOCKED_MODULES = listOf(
             it.endsWith(".zip", ignoreCase = true) &&
             !it.contains("-debug", ignoreCase = true)
     },
-    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
+    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS", preferredTag = "oss-173") {
         it.endsWith(".zip") && it.contains("ZYGISK") && it.contains("release")
     }
 )
