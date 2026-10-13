@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Adds an explicit, ordinary-reboot-only Force soft reboot preference.
-    return "1.3.25"
+    // Migrates legacy NX729J Ghostlock CPU selection to the verified pair.
+    return "1.3.26"
 }
 
 subprojects {

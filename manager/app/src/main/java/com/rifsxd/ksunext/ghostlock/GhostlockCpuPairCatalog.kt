@@ -18,6 +18,7 @@ data class GhostlockCpuPairOption(
 object GhostlockCpuPairCatalog {
     private const val PREFERENCES = "ghostlock_prefs"
     private const val CPU_PAIR_KEY = "cpu_pair"
+    private const val CPU_PAIR_EXPLICIT_KEY = "cpu_pair_explicit"
     private val defaultPair = GhostlockCpuPair(0, 1)
     private val verifiedPairs = mapOf(
         // Upstream's verified Red Magic 8 Pro profile uses a cross-cluster
@@ -66,11 +67,27 @@ object GhostlockCpuPairCatalog {
         kernelRelease: String? = null,
         options: List<GhostlockCpuPairOption> = options(kernelRelease),
     ): GhostlockCpuPair {
-        val saved = context.getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFERENCES, MODE_PRIVATE)
+        val saved = preferences
             .getString(CPU_PAIR_KEY, null)
             ?.let(::parsePair)
-        return saved?.takeIf { pair -> options.any { it.pair == pair } }
-            ?: verifiedPairs[kernelRelease]?.takeIf { pair -> options.any { it.pair == pair } }
+        val verified = verifiedPairs[kernelRelease]
+            ?.takeIf { pair -> options.any { it.pair == pair } }
+        val savedWasExplicit = preferences.getBoolean(CPU_PAIR_EXPLICIT_KEY, false)
+        /* Builds before the verified NX729J profile existed persisted the
+         * generic 0,1 fallback without recording whether it was user-selected.
+         * Treat that exact legacy value as stale; otherwise it masks the
+         * upstream-verified 3,4 pair indefinitely. A current explicit choice
+         * still wins, including an intentional 0,1 selection. */
+        val staleLegacyDefault = saved == defaultPair && !savedWasExplicit && verified != null
+        if (staleLegacyDefault) {
+            preferences.edit()
+                .putString(CPU_PAIR_KEY, verified.toString())
+                .putBoolean(CPU_PAIR_EXPLICIT_KEY, false)
+                .apply()
+        }
+        return saved?.takeIf { pair -> options.any { it.pair == pair } && !staleLegacyDefault }
+            ?: verified
             ?: options.firstOrNull { it.pair == defaultPair }?.pair
             ?: options.firstOrNull()?.pair
             ?: defaultPair
@@ -80,6 +97,7 @@ object GhostlockCpuPairCatalog {
         context.getSharedPreferences(PREFERENCES, MODE_PRIVATE)
             .edit()
             .putString(CPU_PAIR_KEY, pair.toString())
+            .putBoolean(CPU_PAIR_EXPLICIT_KEY, true)
             .apply()
     }
 
