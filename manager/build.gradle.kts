@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Uses the upstream-verified NX729J Ghostlock CPU pair and exposes diagnostics.
-    return "1.3.21"
+    // Accepts upstream 5.15 profiles while keeping unmeasured resident mode fail-closed.
+    return "1.3.22"
 }
 
 subprojects {
