@@ -143,7 +143,7 @@
     <string name="ghostlock_timeout">BL Root did not finish within the allowed time. Please try again only on a supported kernel.</string>
     <string name="ghostlock_no_output">BL Root finished.</string>
     <string name="ghostlock_success">BL Root completed. Restart ZSU Manager to finish applying the changes.</string>
-    <string name="ghostlock_failed">BL Root did not complete. Please try again only on a supported kernel.</string>
+    <string name="ghostlock_failed">BL Root did not complete. Native diagnostics are shown below.</string>
     <string name="settings_auto_ghostlock">Auto Ghostlock</string>
     <string name="settings_auto_ghostlock_summary">Re-apply BL Root after each reboot, with up to three best-effort attempts.</string>
     <string name="settings_auto_ghostlock_locked_summary">Run BL Root successfully once to unlock automatic attempts after reboot.</string>

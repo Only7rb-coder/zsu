@@ -12,6 +12,7 @@ object GhostlockRunner {
     private const val KSUD_NAME = "libksud.so"
     private const val WORK_DIR_NAME = "ghostlock"
     private const val LOG_NAME = ".ghostlock_ksu.log"
+    private const val RESULT_LOG_NAME = "last-run.log"
     private const val PROFILE_NAME = "active-profile.json"
     // Profiles allow heap preparation to run for up to 240 seconds. Keep the
     // outer watchdog longer so it cannot stop a valid slow run prematurely.
@@ -61,6 +62,9 @@ object GhostlockRunner {
                     env["TMPDIR"] = workDir.absolutePath
                     env["HOME"] = workDir.absolutePath
                     env["GHOSTLOCK_KSUD"] = packagedKsud.absolutePath
+                    // Keep the native stage/profile diagnostics in the UI when
+                    // a device-specific route fails before the handoff log.
+                    env["GHOSTLOCK_VERBOSE_DEBUG"] = "1"
                     // The native runtime applies explicit CPU choices from these variables.
                     env["GHOSTLOCK_CORE"] = cpuPair.main.toString()
                     env["GHOSTLOCK_CONSUMER_CORE"] = cpuPair.consumer.toString()
@@ -105,6 +109,7 @@ object GhostlockRunner {
         } else {
             "GhostLock exited with code $exitCode"
         }
+        runCatching { File(workDir, RESULT_LOG_NAME).writeText(finalOutput) }
         return Result(
             finished && exitCode == 0,
             !finished,
@@ -117,10 +122,17 @@ object GhostlockRunner {
         if (first.success || first.timedOut) return first
         Thread.sleep(750L)
         val second = runOnce(context)
+        val combinedOutput = listOf(
+            "First attempt failed; controlled retry also ran.",
+            "--- first attempt ---",
+            first.output,
+            "--- retry attempt ---",
+            second.output,
+        ).filter { it.isNotBlank() }.joinToString("\n")
         return if (second.success) {
             second.copy(output = "First attempt failed; controlled retry succeeded.\n${second.output}")
         } else {
-            second.copy(output = "First attempt failed; controlled retry also failed.\n${second.output}")
+            second.copy(output = combinedOutput)
         }
     }
 }

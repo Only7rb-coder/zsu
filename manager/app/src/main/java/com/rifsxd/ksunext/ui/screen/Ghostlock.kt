@@ -97,13 +97,20 @@ private object BlRootOperationStore {
                 if (result.success) {
                     GhostlockAutoMode.onManualSuccess(appContext)
                 }
-                statusMessage.value = when {
-                    result.success -> appContext.getString(R.string.ghostlock_success)
-                    result.timedOut -> appContext.getString(R.string.ghostlock_timeout)
-                    else -> appContext.getString(R.string.ghostlock_failed)
+                statusMessage.value = if (result.success) {
+                    appContext.getString(R.string.ghostlock_success)
+                } else {
+                    result.output.ifBlank {
+                        appContext.getString(
+                            if (result.timedOut) R.string.ghostlock_timeout
+                            else R.string.ghostlock_failed
+                        )
+                    }
                 }
-            } catch (_: Throwable) {
-                statusMessage.value = appContext.getString(R.string.ghostlock_failed)
+            } catch (error: Throwable) {
+                statusMessage.value = error.message?.let {
+                    "BL Root exception: $it"
+                } ?: appContext.getString(R.string.ghostlock_failed)
             } finally {
                 timerJob.cancel()
                 isRunning.value = false
@@ -296,7 +303,12 @@ fun GhostlockScreen() {
                     Text(
                         text = statusMessage,
                         modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = if (isRunning) {
+                            MaterialTheme.typography.bodyMedium
+                        } else {
+                            MaterialTheme.typography.bodySmall
+                        },
+                        fontFamily = if (isRunning) null else FontFamily.Monospace
                     )
                 }
             }

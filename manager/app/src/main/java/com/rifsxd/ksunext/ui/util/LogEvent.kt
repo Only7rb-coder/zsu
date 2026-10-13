@@ -38,6 +38,7 @@ fun getBugreportFile(context: Context): File {
     val propFile = File(bugreportDir, "props.txt")
     val allowListFile = File(bugreportDir, "allowlist.bin")
     val procModules = File(bugreportDir, "proc_modules.txt")
+    val ghostlockLog = File(bugreportDir, "ghostlock_last_run.log")
     val bootConfig = File(bugreportDir, "boot_config.txt")
     val kernelConfig = File(bugreportDir, "defconfig.gz")
 
@@ -63,6 +64,9 @@ fun getBugreportFile(context: Context): File {
     shell.newJob().add("getprop > ${propFile.absolutePath}").exec()
     shell.newJob().add("cp /data/adb/ksu/.allowlist ${allowListFile.absolutePath}").exec()
     shell.newJob().add("cp /proc/modules ${procModules.absolutePath}").exec()
+    File(context.filesDir, "ghostlock/last-run.log")
+        .takeIf { it.isFile }
+        ?.copyTo(ghostlockLog, overwrite = true)
     shell.newJob().add("cp /proc/bootconfig ${bootConfig.absolutePath}").exec()
     shell.newJob().add("cp /proc/config.gz ${kernelConfig.absolutePath}").exec()
 
