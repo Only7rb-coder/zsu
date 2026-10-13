@@ -398,17 +398,22 @@ fun installBoot(
 }
 
 fun reboot(reason: String = "") {
-    if (reason == "soft-reboot") {
+    val effectiveReason = when {
+        reason == "normal" && RebootMode.isForceSoftRebootEnabled(ksuApp) -> "soft-reboot"
+        reason == "normal" -> ""
+        else -> reason
+    }
+    if (effectiveReason == "soft-reboot") {
         // ksud (userspace)
         com.rifsxd.ksunext.ui.util.execKsud("soft-reboot", true, true)
         return
     }
 
-    if (reason == "recovery") {
+    if (effectiveReason == "recovery") {
         // KEYCODE_POWER = 26, hide incorrect "Factory data reset" message
         ShellUtils.fastCmdResult("/system/bin/input keyevent 26")
     }
-    ShellUtils.fastCmdResult("/system/bin/svc power reboot $reason || /system/bin/reboot $reason")
+    ShellUtils.fastCmdResult("/system/bin/svc power reboot $effectiveReason || /system/bin/reboot $effectiveReason")
 }
 
 fun flashAnyKernelZip(

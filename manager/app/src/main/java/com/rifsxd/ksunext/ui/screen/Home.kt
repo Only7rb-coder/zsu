@@ -964,7 +964,7 @@ private fun TopBar(
                     DropdownMenu(expanded = showDropdown, onDismissRequest = {
                         showDropdown = false
                     }) {
-                        RebootDropdownItem(id = R.string.reboot)
+                        RebootDropdownItem(id = R.string.reboot, reason = "normal")
                         RebootDropdownItem(id = R.string.reboot_userspace, reason = "soft-reboot")
 
                         val pm =

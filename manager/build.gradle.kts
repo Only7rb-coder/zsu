@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Full-boot-only Auto Ghostlock with no retry or soft-reboot rerun.
-    return "1.3.24"
+    // Adds an explicit, ordinary-reboot-only Force soft reboot preference.
+    return "1.3.25"
 }
 
 subprojects {

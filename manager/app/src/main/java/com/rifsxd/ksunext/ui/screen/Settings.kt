@@ -588,6 +588,22 @@ private fun SecurityCard(
                 }
             }
 
+            var forceSoftRebootEnabled by rememberSaveable {
+                mutableStateOf(RebootMode.isForceSoftRebootEnabled(context))
+            }
+            SwitchItem(
+                icon = Icons.Filled.Sync,
+                title = stringResource(R.string.settings_force_soft_reboot),
+                summary = stringResource(R.string.settings_force_soft_reboot_summary),
+                checked = forceSoftRebootEnabled,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            ) { enabled ->
+                context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit { putBoolean(RebootMode.PREF_ENABLED, enabled) }
+                forceSoftRebootEnabled = enabled
+            }
+
             if (runCatching { Natives.isLateLoadMode }.getOrDefault(false)) {
                 var autoJailbreakEnabled by rememberSaveable {
                     mutableStateOf(JailbreakMode.isAutoEnabled(context))

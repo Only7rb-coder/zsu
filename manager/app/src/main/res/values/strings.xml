@@ -147,6 +147,8 @@
     <string name="settings_auto_ghostlock">Auto Ghostlock</string>
     <string name="settings_auto_ghostlock_summary">Run one BL Root attempt after each full reboot; soft reboot does not rerun the exploit. Disables itself after failure.</string>
     <string name="settings_auto_ghostlock_locked_summary">Run BL Root successfully once, then explicitly enable this one-shot full-reboot re-apply.</string>
+    <string name="settings_force_soft_reboot">Force soft reboot</string>
+    <string name="settings_force_soft_reboot_summary">The Home screen’s plain Reboot action restarts Android userspace without rebooting the kernel. Flashing and explicit recovery/bootloader targets still use a full reboot.</string>
     <string name="settings_auto_jailbreak">Auto jailbreak</string>
     <string name="settings_auto_jailbreak_summary">Automatically restart late-load root after boot. This only appears while jailbreak mode is active.</string>
     <string name="reboot_to_apply">Reboot to take effect</string>
