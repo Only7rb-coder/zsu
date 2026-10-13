@@ -39,7 +39,7 @@ object GhostlockRunner {
         if (!isKernelSupported(context, release)) {
             return Result(false, false, "No bundled GhostLock profile for $release")
         }
-        val cpuPair = GhostlockCpuPairCatalog.selected(context)
+        val cpuPair = GhostlockCpuPairCatalog.selected(context, release)
         val profile = try {
             GhostlockProfileConfiguration.resolve(context, release, cpuPair.main, cpuPair.consumer)
         } catch (error: Exception) {

@@ -19,8 +19,14 @@ object GhostlockCpuPairCatalog {
     private const val PREFERENCES = "ghostlock_prefs"
     private const val CPU_PAIR_KEY = "cpu_pair"
     private val defaultPair = GhostlockCpuPair(0, 1)
+    private val verifiedPairs = mapOf(
+        // Upstream's verified Red Magic 8 Pro profile uses a cross-cluster
+        // pair. It must not be replaced by the generic 0,1 fallback.
+        "5.15.167-android13-8-00017-gb1f32b310a30-ab12826353" to
+            GhostlockCpuPair(3, 4),
+    )
 
-    fun options(): List<GhostlockCpuPairOption> {
+    fun options(kernelRelease: String? = null): List<GhostlockCpuPairOption> {
         val onlineCpus = parseCpuList(readSysFile("/sys/devices/system/cpu/online"))
         val options = onlineCpus
             .mapNotNull { cpu ->
@@ -39,6 +45,14 @@ object GhostlockCpuPairCatalog {
             .distinctBy { it.pair }
             .toMutableList()
 
+        verifiedPairs[kernelRelease]?.let { pair ->
+            if (pair.main in onlineCpus && pair.consumer in onlineCpus &&
+                options.none { it.pair == pair }
+            ) {
+                options.add(0, GhostlockCpuPairOption(pair, "$pair · verified profile"))
+            }
+        }
+
         if (options.none { it.pair == defaultPair }) {
             val frequency = readMaxFrequency(defaultPair.main)
             val suffix = frequency.takeIf { it > 0L }?.let { " · ${formatFrequency(it)}" }.orEmpty()
@@ -47,11 +61,16 @@ object GhostlockCpuPairCatalog {
         return options
     }
 
-    fun selected(context: Context, options: List<GhostlockCpuPairOption> = options()): GhostlockCpuPair {
+    fun selected(
+        context: Context,
+        kernelRelease: String? = null,
+        options: List<GhostlockCpuPairOption> = options(kernelRelease),
+    ): GhostlockCpuPair {
         val saved = context.getSharedPreferences(PREFERENCES, MODE_PRIVATE)
             .getString(CPU_PAIR_KEY, null)
             ?.let(::parsePair)
         return saved?.takeIf { pair -> options.any { it.pair == pair } }
+            ?: verifiedPairs[kernelRelease]?.takeIf { pair -> options.any { it.pair == pair } }
             ?: options.firstOrNull { it.pair == defaultPair }?.pair
             ?: options.firstOrNull()?.pair
             ?: defaultPair

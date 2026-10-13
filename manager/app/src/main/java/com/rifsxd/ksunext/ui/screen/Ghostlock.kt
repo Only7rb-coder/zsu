@@ -130,10 +130,12 @@ fun GhostlockScreen() {
     val socName = remember { resolveSocName() }
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
     val kernelSupported = GhostlockRunner.isKernelSupported(context, kernelRelease)
-    val cpuOptions = remember { GhostlockCpuPairCatalog.options() }
+    val cpuOptions = remember(kernelRelease) { GhostlockCpuPairCatalog.options(kernelRelease) }
     var selectedCpuPairIndex by rememberSaveable {
         mutableIntStateOf(
-            cpuOptions.indexOfFirst { it.pair == GhostlockCpuPairCatalog.selected(context, cpuOptions) }
+            cpuOptions.indexOfFirst {
+                it.pair == GhostlockCpuPairCatalog.selected(context, kernelRelease, cpuOptions)
+            }
                 .coerceAtLeast(0),
         )
     }
