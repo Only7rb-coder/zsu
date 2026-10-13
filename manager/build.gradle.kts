@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Prevents failed Ghostlock attempts from being retried into a reboot loop.
-    return "1.3.23"
+    // Full-boot-only Auto Ghostlock with no retry or soft-reboot rerun.
+    return "1.3.24"
 }
 
 subprojects {

@@ -145,8 +145,8 @@
     <string name="ghostlock_success">BL Root completed. Restart ZSU Manager to finish applying the changes.</string>
     <string name="ghostlock_failed">BL Root did not complete. Native diagnostics are shown below.</string>
     <string name="settings_auto_ghostlock">Auto Ghostlock</string>
-    <string name="settings_auto_ghostlock_summary">Re-apply BL Root after each reboot, with up to three best-effort attempts.</string>
-    <string name="settings_auto_ghostlock_locked_summary">Run BL Root successfully once to unlock automatic attempts after reboot.</string>
+    <string name="settings_auto_ghostlock_summary">Run one BL Root attempt after each full reboot; soft reboot does not rerun the exploit. Disables itself after failure.</string>
+    <string name="settings_auto_ghostlock_locked_summary">Run BL Root successfully once, then explicitly enable this one-shot full-reboot re-apply.</string>
     <string name="settings_auto_jailbreak">Auto jailbreak</string>
     <string name="settings_auto_jailbreak_summary">Automatically restart late-load root after boot. This only appears while jailbreak mode is active.</string>
     <string name="reboot_to_apply">Reboot to take effect</string>

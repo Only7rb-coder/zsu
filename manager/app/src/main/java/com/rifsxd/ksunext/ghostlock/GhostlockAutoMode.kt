@@ -4,18 +4,22 @@ import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
 import android.content.Context
+import android.os.SystemClock
+import android.provider.Settings
 
 /**
  * Controls the opt-in, best-effort post-reboot Ghostlock attempt.
  * A successful manual BL Root run arms the setting; the user can disable it
  * later in Settings. Ghostlock changes live kernel state, so this re-applies
- * it after reboot rather than making the kernel state itself persistent.
+ * it after a full reboot rather than making the kernel state itself persistent.
  */
 object GhostlockAutoMode {
     private const val PREFS_NAME = "settings"
     private const val PREF_ARMED = "auto_ghostlock_armed"
     private const val PREF_ENABLED = "auto_ghostlock_enabled"
     private const val PREF_ATTEMPT_STATE = "auto_ghostlock_attempt_state"
+    private const val PREF_LAST_BOOT_COUNT = "auto_ghostlock_last_boot_count"
+    private const val PREF_SCHEDULED_ELAPSED = "auto_ghostlock_scheduled_elapsed"
     private const val ATTEMPT_NONE = 0
     private const val ATTEMPT_PENDING = 1
     private const val ATTEMPT_RUNNING = 2
@@ -29,14 +33,14 @@ object GhostlockAutoMode {
         isArmed(context) && context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(PREF_ENABLED, false)
 
-    /** Arms and enables automatic attempts after a successful manual run. */
+    /** Arms Auto Ghostlock after success, but keeps execution explicitly opt-in. */
     fun onManualSuccess(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_ARMED, true)
-            .putBoolean(PREF_ENABLED, true)
             .putInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE)
-            // This flag controls behavior at the next boot; wait for the
+            .remove(PREF_SCHEDULED_ELAPSED)
+            // This flag controls behavior at the next full boot; wait for the
             // write to reach disk before reporting success to the UI.
             .commit()
         setBootReceiverEnabled(context, true)
@@ -49,6 +53,7 @@ object GhostlockAutoMode {
             .edit()
             .putBoolean(PREF_ENABLED, enabled)
             .putInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE)
+            .remove(PREF_SCHEDULED_ELAPSED)
             // Do not leave boot behavior in an in-memory apply() queue.
             .commit()
         if (!saved) return false
@@ -57,7 +62,7 @@ object GhostlockAutoMode {
         return true
     }
 
-    /** Schedule one deferred attempt for the current boot. */
+    /** Schedule one deferred attempt for the current full boot only. */
     fun scheduleAfterBoot(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         when (prefs.getInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE)) {
@@ -67,18 +72,34 @@ object GhostlockAutoMode {
                 return false
             }
             ATTEMPT_PENDING -> {
-                /* The previous job was queued but native code never claimed it. */
+                /* A duplicate BOOT_COMPLETED in the same boot must not replace
+                 * the already queued job. */
+                val currentBoot = currentBootCount(context)
+                val lastBoot = prefs.getInt(PREF_LAST_BOOT_COUNT, -1)
+                if (currentBoot < 0 || currentBoot == lastBoot) return false
                 prefs.edit().putInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE).commit()
                 cancelScheduledJob(context)
             }
         }
-        return schedule(context)
+        val currentBoot = currentBootCount(context)
+        val lastBoot = prefs.getInt(PREF_LAST_BOOT_COUNT, -1)
+        if (currentBoot >= 0 && currentBoot == lastBoot) {
+            /* Userspace/soft reboot keeps the kernel and boot generation. */
+            return false
+        }
+        return schedule(context, currentBoot)
     }
 
-    /** Claim the pending job; a running marker survives process death/reboot. */
+    /** Claim the pending job; running state survives process death/reboot. */
     fun claimAttempt(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (prefs.getInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE) != ATTEMPT_PENDING) {
+            return false
+        }
+        val scheduledAt = prefs.getLong(PREF_SCHEDULED_ELAPSED, -1L)
+        if (scheduledAt >= 0L && SystemClock.elapsedRealtime() < scheduledAt) {
+            /* JobScheduler delivered a non-persisted job across a reboot. */
+            clearAttempt(context)
             return false
         }
         return prefs.edit()
@@ -90,6 +111,7 @@ object GhostlockAutoMode {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE)
+            .remove(PREF_SCHEDULED_ELAPSED)
             .commit()
     }
 
@@ -99,17 +121,21 @@ object GhostlockAutoMode {
             .edit()
             .putBoolean(PREF_ENABLED, false)
             .putInt(PREF_ATTEMPT_STATE, ATTEMPT_NONE)
+            .remove(PREF_SCHEDULED_ELAPSED)
             .commit()
         cancelScheduledJob(context)
     }
 
-    private fun schedule(context: Context): Boolean {
+    private fun schedule(context: Context, bootCount: Int): Boolean {
         if (!isEnabled(context)) return false
         val scheduler = context.getSystemService(JobScheduler::class.java) ?: return false
         val component = ComponentName(context, GhostlockAutoJobService::class.java)
+        val now = SystemClock.elapsedRealtime()
         val marked = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt(PREF_ATTEMPT_STATE, ATTEMPT_PENDING)
+            .putInt(PREF_LAST_BOOT_COUNT, bootCount)
+            .putLong(PREF_SCHEDULED_ELAPSED, now)
             .commit()
         if (!marked) return false
         val job = JobInfo.Builder(JOB_ID, component)
@@ -122,6 +148,15 @@ object GhostlockAutoMode {
         if (result != JobScheduler.RESULT_SUCCESS) clearAttempt(context)
         return result == JobScheduler.RESULT_SUCCESS
     }
+
+    private fun currentBootCount(context: Context): Int =
+        runCatching {
+            Settings.Global.getInt(
+                context.contentResolver,
+                Settings.Global.BOOT_COUNT,
+                -1,
+            )
+        }.getOrDefault(-1)
 
     private fun cancelScheduledJob(context: Context) {
         context.getSystemService(JobScheduler::class.java)?.cancel(JOB_ID)
