@@ -57,7 +57,7 @@ fun getVersionCode(): Int {
 
 fun getVersionName(): String {
     // Fixes literal escape sequences in the flash console output.
-    return "1.3.19"
+    return "1.3.20"
 }
 
 subprojects {

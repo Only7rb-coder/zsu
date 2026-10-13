@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 /** Runs one post-boot Ghostlock attempt without keeping a background service alive. */
 class GhostlockAutoJobService : JobService() {
     private val jobScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var activeRun: kotlinx.coroutines.Job? = null
 
     override fun onStartJob(params: JobParameters): Boolean {
         if (!GhostlockAutoMode.isEnabled(this)) return false
@@ -21,14 +22,28 @@ class GhostlockAutoJobService : JobService() {
             GhostlockKernelRelease.current()
         )
         if (!supportedAbi || !supportedKernel) return false
-        jobScope.launch {
-            runCatching { GhostlockRunner.run(applicationContext) }
-            jobFinished(params, false)
+        if (activeRun?.isActive == true) return false
+        val attempt = params.extras.getInt("ghostlock_attempt", 0)
+        activeRun = jobScope.launch {
+            try {
+                val result = runCatching { GhostlockRunner.run(applicationContext) }
+                    .getOrNull()
+                jobFinished(params, false)
+                if (result?.success != true) {
+                    GhostlockAutoMode.scheduleRetry(applicationContext, attempt)
+                }
+            } finally {
+                activeRun = null
+            }
         }
         return true
     }
 
-    override fun onStopJob(params: JobParameters): Boolean = true
+    override fun onStopJob(params: JobParameters): Boolean {
+        activeRun?.cancel()
+        activeRun = null
+        return true
+    }
 
     override fun onDestroy() {
         jobScope.cancel()
