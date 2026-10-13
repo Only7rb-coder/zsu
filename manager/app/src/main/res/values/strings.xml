@@ -136,6 +136,7 @@
     <string name="ghostlock_run">Run BL Root</string>
     <string name="ghostlock_running">Running…</string>
     <string name="ghostlock_progress">Running BL Root… %1$d s</string>
+    <string name="ghostlock_progress_detail">Running BL Root… %1$d s&#10;%2$s</string>
     <string name="ghostlock_starting">Preparing BL Root…</string>
     <string name="ghostlock_confirm_title">Run BL Root?</string>
     <string name="ghostlock_confirm_message">BL Root performs a device-specific kernel operation. A mismatched or unstable device kernel can crash or reboot the phone. Continue only if you understand the risk.</string>

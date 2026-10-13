@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Migrates legacy NX729J Ghostlock CPU selection to the verified pair.
-    return "1.3.26"
+    // Shows native Ghostlock phases during the long address-discovery run.
+    return "1.3.27"
 }
 
 subprojects {

@@ -72,27 +72,45 @@ private object BlRootOperationStore {
     val isRunning = mutableStateOf(false)
     val elapsedSeconds = mutableStateOf(0)
     val statusMessage = mutableStateOf("")
+    private val nativeStatus = mutableStateOf("")
+
+    private fun renderProgress(context: Context) {
+        statusMessage.value = if (nativeStatus.value.isBlank()) {
+            context.getString(R.string.ghostlock_progress, elapsedSeconds.value)
+        } else {
+            context.getString(
+                R.string.ghostlock_progress_detail,
+                elapsedSeconds.value,
+                nativeStatus.value,
+            )
+        }
+    }
 
     fun start(context: Context) {
         if (isRunning.value || operationJob?.isActive == true) return
         val appContext = context.applicationContext
         isRunning.value = true
         elapsedSeconds.value = 0
-        statusMessage.value = appContext.getString(R.string.ghostlock_progress, 0)
+        nativeStatus.value = ""
+        renderProgress(appContext)
         operationJob = scope.launch {
             val timerJob = launch {
                 while (isActive) {
                     delay(1000)
                     elapsedSeconds.value += 1
-                    statusMessage.value = appContext.getString(
-                        R.string.ghostlock_progress,
-                        elapsedSeconds.value
-                    )
+                    renderProgress(appContext)
                 }
             }
             try {
                 val result = withContext(Dispatchers.IO) {
-                    GhostlockRunner.run(appContext)
+                    GhostlockRunner.run(appContext) { line ->
+                        scope.launch(Dispatchers.Main.immediate) {
+                            if (isRunning.value) {
+                                nativeStatus.value = line.take(180)
+                                renderProgress(appContext)
+                            }
+                        }
+                    }
                 }
                 if (result.success) {
                     GhostlockAutoMode.onManualSuccess(appContext)

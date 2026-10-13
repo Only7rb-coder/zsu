@@ -24,7 +24,7 @@ object GhostlockRunner {
     fun isKernelSupported(context: Context, release: String): Boolean =
         GhostlockProfileConfiguration.hasProfile(context, release)
 
-    private fun runOnce(context: Context): Result {
+    private fun runOnce(context: Context, onOutput: (String) -> Unit): Result {
         val workDir = File(context.filesDir, WORK_DIR_NAME)
         if (!workDir.exists() && !workDir.mkdirs()) {
             return Result(false, false, "Unable to create GhostLock working directory")
@@ -78,6 +78,7 @@ object GhostlockRunner {
                 process.inputStream.bufferedReader().useLines { lines ->
                     lines.forEach { line ->
                         synchronized(output) { output.append(line).append('\n') }
+                        if (line.isNotBlank()) runCatching { onOutput(line.trim()) }
                     }
                 }
             } catch (_: IOException) {
@@ -117,12 +118,12 @@ object GhostlockRunner {
         )
     }
 
-    fun run(context: Context): Result {
+    fun run(context: Context, onOutput: (String) -> Unit = {}): Result {
         /* A failed native run may have touched PI/futex state even when its
          * userspace exit code is non-zero. Retrying immediately can reuse a
          * kernel object graph that the first attempt failed to disarm and can
          * turn a recoverable failure into a device reboot. Require a fresh boot
          * and an explicit user decision before another attempt. */
-        return runOnce(context)
+        return runOnce(context, onOutput)
     }
 }
