@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Fixes literal escape sequences in the flash console output.
-    return "1.3.20"
+    // Uses the upstream-verified NX729J Ghostlock CPU pair and exposes diagnostics.
+    return "1.3.21"
 }
 
 subprojects {
