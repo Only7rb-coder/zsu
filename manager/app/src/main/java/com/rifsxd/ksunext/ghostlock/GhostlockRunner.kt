@@ -118,21 +118,11 @@ object GhostlockRunner {
     }
 
     fun run(context: Context): Result {
-        val first = runOnce(context)
-        if (first.success || first.timedOut) return first
-        Thread.sleep(750L)
-        val second = runOnce(context)
-        val combinedOutput = listOf(
-            "First attempt failed; controlled retry also ran.",
-            "--- first attempt ---",
-            first.output,
-            "--- retry attempt ---",
-            second.output,
-        ).filter { it.isNotBlank() }.joinToString("\n")
-        return if (second.success) {
-            second.copy(output = "First attempt failed; controlled retry succeeded.\n${second.output}")
-        } else {
-            second.copy(output = combinedOutput)
-        }
+        /* A failed native run may have touched PI/futex state even when its
+         * userspace exit code is non-zero. Retrying immediately can reuse a
+         * kernel object graph that the first attempt failed to disarm and can
+         * turn a recoverable failure into a device reboot. Require a fresh boot
+         * and an explicit user decision before another attempt. */
+        return runOnce(context)
     }
 }

@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Accepts upstream 5.15 profiles while keeping unmeasured resident mode fail-closed.
-    return "1.3.22"
+    // Prevents failed Ghostlock attempts from being retried into a reboot loop.
+    return "1.3.23"
 }
 
 subprojects {

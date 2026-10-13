@@ -23,16 +23,23 @@ class GhostlockAutoJobService : JobService() {
         )
         if (!supportedAbi || !supportedKernel) return false
         if (activeRun?.isActive == true) return false
-        val attempt = params.extras.getInt("ghostlock_attempt", 0)
+        if (!GhostlockAutoMode.claimAttempt(this)) return false
         activeRun = jobScope.launch {
             try {
                 val result = runCatching { GhostlockRunner.run(applicationContext) }
                     .getOrNull()
                 jobFinished(params, false)
+                GhostlockAutoMode.clearAttempt(applicationContext)
                 if (result?.success != true) {
-                    GhostlockAutoMode.scheduleRetry(applicationContext, attempt)
+                    /* A completed native failure is not retryable: the route
+                     * may have partially changed kernel state. Require the
+                     * user to inspect the log and explicitly re-arm Auto mode. */
+                    GhostlockAutoMode.disableAfterFailure(applicationContext)
                 }
             } finally {
+                /* If the job is interrupted or the process is killed, the
+                 * running marker remains set so the next boot refuses another
+                 * attempt. */
                 activeRun = null
             }
         }
