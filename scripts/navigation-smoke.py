@@ -34,7 +34,8 @@ def ui_tree(output: Path, name: str) -> ET.Element:
 def tab_node(tree: ET.Element, label: str) -> ET.Element:
     matches = [
         n for n in tree.iter("node")
-        if n.get("text") == label or n.get("content-desc") == label
+        if n.get("package") == PACKAGE
+        and (n.get("text") == label or n.get("content-desc") == label)
     ]
     matches = [n for n in matches if bounds(n)[3] > 0]
     assert matches, f"Tab label not exposed/visible: {label}"
@@ -78,6 +79,10 @@ def main() -> None:
         assert overlay in overlays, f"Missing emulator navigation overlay: {overlay}"
         adb("shell", "cmd", "overlay", "enable-exclusive", "--category", "--user", "0", overlay)
         time.sleep(3)
+        # Switching SystemUI's navigation overlay can recreate the foreground
+        # activity or return to Launcher. Reopen the app before testing its tabs.
+        adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/com.rifsxd.ksunext.ui.MainActivity")
+        time.sleep(3)
         for label in TABS + ["Home"]:
             name = f"{mode}-{label.lower().replace(' ', '-')}"
             tree = ui_tree(args.output, f"{name}-before")
@@ -86,10 +91,10 @@ def main() -> None:
             adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
             time.sleep(1)
             tree = ui_tree(args.output, name)
+            screenshot(args.output, name)
             check_dock(tree)
             if label == "Home":
                 assert "CONTROL CENTER" not in ET.tostring(tree, encoding="unicode")
-            screenshot(args.output, name)
             assert adb("shell", "pidof", PACKAGE).strip(), "ZSU process stopped during navigation"
             print(f"PASS: {mode} → {label}; all four tab labels visible and aligned", flush=True)
     (args.output / "logcat.txt").write_text(adb("logcat", "-d", "-t", "2000"))
