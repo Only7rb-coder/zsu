@@ -527,10 +527,15 @@ private fun BottomBar(
         }
     }
     val effectiveSelectedIndex = when {
-        exactMatch >= 0 -> exactMatch
+        nestedMatch != null -> nestedMatch
+        exactMatch > 0 -> exactMatch
+        // A Home route can be emitted briefly while a nested destination is
+        // entering. Keep the explicit/remembered parent selection in that
+        // window; real Home tab taps update the state before navigation.
+        exactMatch == 0 -> lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
         resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> resolvedNestedMatch
         else -> {
-        lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
+            lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
         }
     }
 
