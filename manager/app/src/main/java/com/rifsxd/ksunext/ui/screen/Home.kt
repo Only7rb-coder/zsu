@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -443,23 +444,38 @@ private fun NonRootedWelcomeCard(onOpenBlRoot: () -> Unit) {
 @Composable
 private fun SuperuserCard(onClick: (() -> Unit)? = null) {
     val count = getSuperuserCount()
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)),
         modifier = Modifier
             .height(IntrinsicSize.Min)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = if (count <= 1) {
@@ -467,12 +483,14 @@ private fun SuperuserCard(onClick: (() -> Unit)? = null) {
                     } else {
                         stringResource(R.string.home_superuser_count_plural)
                     },
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = count.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -499,23 +517,38 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
         }
     }
 
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)),
         modifier = Modifier
             .height(IntrinsicSize.Min)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Extension,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = if (count <= 1) {
@@ -523,14 +556,16 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                     } else {
                         stringResource(R.string.home_module_count_plural)
                     },
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = count.toString(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     if (moduleUpdateCount > 0) {
@@ -541,7 +576,8 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                             Text(
                                 text = "|",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.outline
                             )
 
                             Spacer(Modifier.width(4.dp))
@@ -557,16 +593,18 @@ private fun ModuleCard(onClick: (() -> Unit)? = null) {
                                 when (target) {
                                     1 -> Text(
                                         text = stringResource(id = R.string.home_module_update_available),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                     2 -> Text(
                                         text = buildAnnotatedString {
                                             append(moduleUpdateCount.toString())
                                             append("*")
                                         },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -658,7 +696,7 @@ fun UpdateCard() {
                 }
             }
         })
-        ElevatedCard(
+        Card(
             modifier = Modifier.clickable {
                     if (changelog.isEmpty()) {
                         updateScope.launch {
@@ -691,9 +729,10 @@ fun UpdateCard() {
                     )
                 }
             },
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.48f))
         ) {
             Column(
                 modifier = Modifier
@@ -707,7 +746,7 @@ fun UpdateCard() {
                     Icon(
                         imageVector = Icons.Filled.Update,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 20.dp)
                     )
                     Text(
@@ -717,13 +756,13 @@ fun UpdateCard() {
                             stringResource(id = R.string.new_version_available, "", newVersionCode)
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 
@@ -928,17 +967,27 @@ private fun TopBar(
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 8.dp)
-                        .size(48.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .graphicsLayer {
                             rotationZ = rotation
                         }
                 )
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "CONTROL CENTER",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 1.2.sp
+                    )
+                }
             }
         },
         actions = {
@@ -1005,212 +1054,231 @@ private fun StatusCard(
     onClickInstall: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val statusAccent = when {
+        ksuVersionParam != null && managerAuthorizedParam -> MaterialTheme.colorScheme.primary
+        ksuVersionParam != null || kernelVersionParam.isGKI() -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.error
+    }
+    val statusSurface = when {
+        ksuVersionParam != null && managerAuthorizedParam -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ksuVersionParam != null || kernelVersionParam.isGKI() -> MaterialTheme.colorScheme.surfaceContainer
+        else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.42f)
+    }
 
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(containerColor = run {
-            if (ksuVersionParam != null && managerAuthorizedParam) MaterialTheme.colorScheme.primary
-            else if (ksuVersionParam != null || kernelVersionParam.isGKI()) MaterialTheme.colorScheme.secondaryContainer
-            else MaterialTheme.colorScheme.errorContainer
-        })
+    Card(
+        colors = CardDefaults.cardColors(containerColor = statusSurface),
+        border = BorderStroke(1.dp, statusAccent.copy(alpha = 0.48f))
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    if (ksuVersionParam == null) {
-                        onClickInstall()
-                    }
-                }
-                .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-            when {
-                ksuVersionParam != null && managerAuthorizedParam -> {
-                    val workingMode = if (lkmModeParam == true || lkmModeParam == false) {
-                        val mode = if (lkmModeParam == true) "LKM" else "BUILT-IN"
-                        "$mode (" + kernelVersionParam.getKernelType() + ")"
-                    } else kernelVersionParam.getKernelType()
-
-                    Icon(
-                        imageVector = Icons.Filled.Mood,
-                        contentDescription = null
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(statusAccent.copy(alpha = 0.12f), Color.Transparent)
                     )
-                    Column(
-                        modifier = Modifier.padding(start = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val labelStyle = LabelItemDefaults.style
-                        TextRow(
-                            trailingContent = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    LabelItem(
-                                        icon = if (safeModeParam) {
+                )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (ksuVersionParam == null) {
+                            onClickInstall()
+                        }
+                    }
+                    .padding(22.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when {
+                    ksuVersionParam != null && managerAuthorizedParam -> {
+                        val workingMode = if (lkmModeParam == true || lkmModeParam == false) {
+                            val mode = if (lkmModeParam == true) "LKM" else "BUILT-IN"
+                            "$mode (" + kernelVersionParam.getKernelType() + ")"
+                        } else kernelVersionParam.getKernelType()
 
-                                            {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Security,
-                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        } else {
-                                            {
-                                                Icon(
-                                                    imageVector = Icons.Filled.VerifiedUser,
-                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        },
-                                        text = {
-                                            Text(
-                                                text = workingMode,
-                                                style = labelStyle.textStyle.copy(
-                                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                )
-                                            )
-                                        },
-                                        style = LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                        )
-                                    )
-                                    if (suCompatDisabledParam) {
+                        Icon(
+                            imageVector = Icons.Filled.Mood,
+                            contentDescription = null
+                        )
+                        Column(
+                            modifier = Modifier.padding(start = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val labelStyle = LabelItemDefaults.style
+                            TextRow(
+                                trailingContent = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
                                         LabelItem(
-                                            icon = {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Warning,
-                                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                    contentDescription = null
-                                                )
+                                            icon = if (safeModeParam) {
+
+                                                {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Security,
+                                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                        contentDescription = null
+                                                    )
+                                                }
+                                            } else {
+                                                {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.VerifiedUser,
+                                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                        contentDescription = null
+                                                    )
+                                                }
                                             },
                                             text = {
                                                 Text(
-                                                    text = stringResource(R.string.sucompat_disabled),
+                                                    text = workingMode,
                                                     style = labelStyle.textStyle.copy(
-                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                     )
                                                 )
                                             },
                                             style = LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer
                                             )
                                         )
-                                    }
-                                    if (lateLoadModeParam) {
-                                        LabelItem(
-                                            icon = {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Warning,
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    contentDescription = null
-                                                )
-                                            },
-                                            text = {
-                                                Text(
-                                                    text = stringResource(R.string.jailbreak_mode),
-                                                    style = labelStyle.textStyle.copy(
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        if (suCompatDisabledParam) {
+                                            LabelItem(
+                                                icon = {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Warning,
+                                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        contentDescription = null
                                                     )
+                                                },
+                                                text = {
+                                                    Text(
+                                                        text = stringResource(R.string.sucompat_disabled),
+                                                        style = labelStyle.textStyle.copy(
+                                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        )
+                                                    )
+                                                },
+                                                style = LabelItemDefaults.style.copy(
+                                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                                 )
-                                            },
-                                            style = LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
                                             )
-                                        )
+                                        }
+                                        if (lateLoadModeParam) {
+                                            LabelItem(
+                                                icon = {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Warning,
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                text = {
+                                                    Text(
+                                                        text = stringResource(R.string.jailbreak_mode),
+                                                        style = labelStyle.textStyle.copy(
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        )
+                                                    )
+                                                },
+                                                style = LabelItemDefaults.style.copy(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            )
+                                        }
                                     }
                                 }
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.home_working),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
-                        ) {
+
+                            val ksuVer = ksuVersionParam ?: 0
+                            val uapiVer = uapiVerParam ?: 0
+                            val tag = if (!ksuVersionTagParam.isNullOrEmpty()) ksuVersionTagParam else "v0.0.0"
+                            val versionText = stringResource(
+                                R.string.home_working_version,
+                                tag,
+                                "$ksuVer-$uapiVer"
+                            )
                             Text(
-                                text = stringResource(id = R.string.home_working),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                                text = versionText,
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
-
-                        val ksuVer = ksuVersionParam ?: 0
-                        val uapiVer = uapiVerParam ?: 0
-                        val tag = if (!ksuVersionTagParam.isNullOrEmpty()) ksuVersionTagParam else "v0.0.0"
-                        val versionText = stringResource(
-                            R.string.home_working_version,
-                            tag,
-                            "$ksuVer-$uapiVer"
-                        )
-                        Text(
-                            text = versionText,
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
-                }
 
-                ksuVersionParam != null -> {
-                    Icon(Icons.Filled.Warning, null)
-                    Column(Modifier.padding(start = 20.dp)) {
-                        Text(
-                            text = stringResource(R.string.home_kernel_detected_manager_unrecognized),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(
-                                R.string.home_kernel_detected_manager_unrecognized_tip,
-                                ksuVersionParam
-                            ),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    ksuVersionParam != null -> {
+                        Icon(Icons.Filled.Warning, null)
+                        Column(Modifier.padding(start = 20.dp)) {
+                            Text(
+                                text = stringResource(R.string.home_kernel_detected_manager_unrecognized),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.home_kernel_detected_manager_unrecognized_tip,
+                                    ksuVersionParam
+                                ),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
-                }
 
-                kernelVersionParam.isGKI() -> {
-                    Icon(Icons.Filled.AutoFixHigh, null)
-                    Column(Modifier.padding(start = 20.dp)) {
-                        Text(
-                            text = stringResource(R.string.home_not_installed),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.home_click_to_install),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        if (showJailbreakAction) {
-                            Spacer(Modifier.height(12.dp))
-                            Button(
-                                onClick = onClickJailbreak,
-                                enabled = !jailbreakLaunching,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                                )
-                            ) {
-                                Icon(Icons.Filled.Bolt, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    stringResource(
-                                        if (jailbreakLaunching) R.string.home_jailbreak_starting
-                                        else R.string.home_jailbreak
+                    kernelVersionParam.isGKI() -> {
+                        Icon(Icons.Filled.AutoFixHigh, null)
+                        Column(Modifier.padding(start = 20.dp)) {
+                            Text(
+                                text = stringResource(R.string.home_not_installed),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.home_click_to_install),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (showJailbreakAction) {
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = onClickJailbreak,
+                                    enabled = !jailbreakLaunching,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                                     )
-                                )
+                                ) {
+                                    Icon(Icons.Filled.Bolt, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        stringResource(
+                                            if (jailbreakLaunching) R.string.home_jailbreak_starting
+                                            else R.string.home_jailbreak
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                else -> {
-                    Icon(Icons.Filled.MoodBad, null)
-                    Column(Modifier.padding(start = 20.dp)) {
-                        Text(
-                            text = stringResource(R.string.home_failure),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.home_failure_tip),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    else -> {
+                        Icon(Icons.Filled.MoodBad, null)
+                        Column(Modifier.padding(start = 20.dp)) {
+                            Text(
+                                text = stringResource(R.string.home_failure),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.home_failure_tip),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
                 }
             }

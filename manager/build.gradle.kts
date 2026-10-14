@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3340
+    val minimumCommitCountForRelease = 3353
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // Shows native Ghostlock phases during the long address-discovery run.
-    return "1.3.27"
+    // Crimson identity and the latest-release SUSFS LKM addon installer.
+    return "1.4.8"
 }
 
 subprojects {

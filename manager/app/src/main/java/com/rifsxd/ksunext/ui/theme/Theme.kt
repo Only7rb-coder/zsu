@@ -24,46 +24,66 @@ private val AppShapes = Shapes(
 
 private val DarkColorScheme = darkColorScheme(
     primary = PRIMARY_LIGHT,
-    onPrimary = Color(0xFF2B0B4D),
-    primaryContainer = Color(0xFF32134F),
-    onPrimaryContainer = Color(0xFFF3E5FF),
+    onPrimary = Color(0xFF2B0A10),
+    primaryContainer = Color(0xFF5A1E29),
+    onPrimaryContainer = Color(0xFFFFDADF),
     secondary = PRIMARY_DARK,
-    onSecondary = Color(0xFF32134F),
-    secondaryContainer = Color(0xFF30233D),
-    onSecondaryContainer = Color(0xFFF0E5F7),
-    tertiary = SECONDARY_DARK,
+    onSecondary = Color(0xFF321016),
+    secondaryContainer = Color(0xFF3A2026),
+    onSecondaryContainer = Color(0xFFFFDDE0),
+    tertiary = Color(0xFFEABB8C),
+    onTertiary = Color(0xFF412A12),
+    tertiaryContainer = Color(0xFF563C24),
+    onTertiaryContainer = Color(0xFFFFDCC0),
     background = APP_DARK_BACKGROUND,
-    onBackground = Color(0xFFF0EDF5),
+    onBackground = Color(0xFFF8F0F1),
     surface = APP_DARK_SURFACE,
-    onSurface = Color(0xFFF0EDF5),
+    onSurface = Color(0xFFF8F0F1),
     surfaceVariant = APP_DARK_SURFACE_ELEVATED,
-    onSurfaceVariant = Color(0xFFD0C6D8),
-    surfaceContainerLow = Color(0xFF121017),
+    onSurfaceVariant = Color(0xFFD8C5C8),
+    surfaceContainerLow = Color(0xFF121014),
     surfaceContainer = APP_DARK_SURFACE,
+    surfaceContainerLowest = APP_DARK_BACKGROUND,
     surfaceContainerHigh = APP_DARK_SURFACE_ELEVATED,
-    surfaceContainerHighest = Color(0xFF2A2236),
-    outline = APP_DARK_OUTLINE
+    surfaceContainerHighest = Color(0xFF2D1D23),
+    outline = APP_DARK_OUTLINE,
+    outlineVariant = Color(0xFF3D2B31),
+    surfaceTint = PRIMARY_LIGHT,
+    inverseSurface = Color(0xFFF8F0F1),
+    inverseOnSurface = Color(0xFF21191A),
+    inversePrimary = PRIMARY
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PRIMARY,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF0DFFF),
-    onPrimaryContainer = Color(0xFF301049),
+    primaryContainer = Color(0xFFFFD9DE),
+    onPrimaryContainer = Color(0xFF4B111B),
     secondary = PRIMARY_LIGHT,
-    secondaryContainer = Color(0xFFEFE4F3),
-    tertiary = SECONDARY_LIGHT,
+    onSecondary = Color(0xFF321016),
+    secondaryContainer = Color(0xFFFFE8EA),
+    onSecondaryContainer = Color(0xFF4B1A21),
+    tertiary = Color(0xFF795735),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFDCC0),
+    onTertiaryContainer = Color(0xFF2C1603),
     background = APP_LIGHT_BACKGROUND,
-    onBackground = Color(0xFF1E1921),
+    onBackground = Color(0xFF21191A),
     surface = APP_LIGHT_SURFACE,
-    onSurface = Color(0xFF1E1921),
+    onSurface = Color(0xFF21191A),
     surfaceVariant = APP_LIGHT_SURFACE_ELEVATED,
-    onSurfaceVariant = Color(0xFF514957),
-    surfaceContainerLow = Color(0xFFFFFBFF),
+    onSurfaceVariant = Color(0xFF655457),
+    surfaceContainerLow = Color(0xFFFFFBFB),
     surfaceContainer = APP_LIGHT_SURFACE,
+    surfaceContainerLowest = Color.White,
     surfaceContainerHigh = APP_LIGHT_SURFACE_ELEVATED,
-    surfaceContainerHighest = Color(0xFFEAE1F0),
-    outline = Color(0xFF807586)
+    surfaceContainerHighest = Color(0xFFF1DFE1),
+    outline = Color(0xFF8A6D72),
+    outlineVariant = Color(0xFFE2BFC6),
+    surfaceTint = PRIMARY,
+    inverseSurface = Color(0xFF21191A),
+    inverseOnSurface = Color(0xFFF8F0F1),
+    inversePrimary = PRIMARY_LIGHT
 )
 
 fun Color.blend(other: Color, ratio: Float): Color {
@@ -80,7 +100,7 @@ fun Color.blend(other: Color, ratio: Float): Color {
 fun KernelSUTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // ZSU: fixed violet identity instead of wallpaper colors
+    dynamicColor: Boolean = false, // Keep the brand palette by default; callers may opt into wallpaper colors.
     amoledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {

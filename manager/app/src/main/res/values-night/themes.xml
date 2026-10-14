@@ -3,6 +3,10 @@
 
     <style name="Theme.KernelSU" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="o_mr1">shortEdges</item>
+        <item name="android:windowBackground">@color/ic_launcher_background</item>
+        <item name="android:colorAccent">#FF596D</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
     </style>
 
     <style name="Theme.KernelSU.WebUI" parent="Theme.KernelSU" />

@@ -19,6 +19,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -35,6 +36,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -238,7 +240,7 @@ class MainActivity : ComponentActivity() {
             handleIntent(intent)
 
         setContent {
-            KernelSUTheme(amoledMode = amoledModeState.value) {
+            KernelSUTheme(darkTheme = true, amoledMode = amoledModeState.value) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
                 val currentDestination = navController.currentBackStackEntryAsState().value?.destination
@@ -504,13 +506,14 @@ private fun BottomBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp),
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 4.dp,
-        shadowElevation = 6.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.96f),
+        tonalElevation = 0.dp,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.7f))
     ) {
         NavigationBar(
             modifier = Modifier.height(76.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
+            containerColor = Color.Transparent,
             tonalElevation = 0.dp
         ) {
             visibleDestinations.forEachIndexed { index, destination ->
