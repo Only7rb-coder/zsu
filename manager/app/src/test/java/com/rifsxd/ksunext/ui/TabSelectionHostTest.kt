@@ -10,6 +10,7 @@ fun main() {
     )
 
     check(nestedTabIndexForRoute("customization", nested) == 3)
+    check(nestedTabIndexForRoute("root/customization", nested) == 3)
     check(nestedTabIndexForRoute("customization?section=appearance", nested) == 3)
     check(nestedTabIndexForRoute("developer", nested) == 3)
     check(nestedTabIndexForRoute("moduleRepo", nested) == 1)
@@ -19,6 +20,7 @@ fun main() {
     check(nestedTabIndexForRoute(null, nested) == null)
 
     check(destinationRouteMatches("appProfile/template-42", "appProfile/{packageName}"))
+    check(destinationRouteMatches("root/appProfile/template-42", "appProfile/{packageName}"))
     check(!destinationRouteMatches("appProfileX/template-42", "appProfile/{packageName}"))
     println("Nested tab selection host tests passed")
 }

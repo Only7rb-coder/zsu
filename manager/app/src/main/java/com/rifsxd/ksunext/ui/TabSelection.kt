@@ -9,8 +9,16 @@ internal fun destinationRouteMatches(currentRoute: String?, destinationRoute: St
         .substringBefore("/{")
         .substringBefore("?")
         .trimEnd('/')
-    return patternBase.isNotEmpty() &&
-        (currentRoute.startsWith("$patternBase/") || currentRoute.startsWith("$patternBase?"))
+    if (patternBase.isEmpty()) return false
+
+    val currentBase = currentRoute.substringBefore("?").trimEnd('/')
+    val currentLeaf = currentBase.substringAfterLast('/')
+    val patternLeaf = patternBase.substringAfterLast('/')
+    return currentBase == patternBase ||
+        currentBase.startsWith("$patternBase/") ||
+        currentBase.startsWith("$patternBase?") ||
+        currentBase.contains("/$patternBase/") ||
+        currentLeaf == patternLeaf
 }
 
 /**
