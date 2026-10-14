@@ -2,6 +2,8 @@ package com.rifsxd.ksunext.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -93,7 +95,9 @@ fun ManageHubScreen(navigator: DestinationsNavigator) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Card(

@@ -13,10 +13,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -29,14 +29,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.activity.viewModels
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -46,7 +48,6 @@ import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.ramcosta.composedestinations.DestinationsNavHost
-import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
@@ -278,7 +279,14 @@ class MainActivity : ComponentActivity() {
                 val isScrollingDown = remember { mutableStateOf(false) }
                 val scrollOffset = remember { mutableStateOf(0f) }
                 val previousScrollOffset = remember { mutableStateOf(0f) }
-                
+
+                LaunchedEffect(currentRoute) {
+                    // A hidden dock belongs to the old screen's scroll state.
+                    isScrollingDown.value = false
+                    scrollOffset.value = 0f
+                    previousScrollOffset.value = 0f
+                }
+
                 // Remember the last valid navbar selection (persists across navbar hide/show)
                 val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
@@ -383,29 +391,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = hostModifier,
                                 navGraph = NavGraphs.root,
                                 navController = navController,
-                                defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                                    // Keep navigation light enough for the dense Home screen, but
-                                    // make the destination change visibly smooth instead of abrupt.
-                                    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-                                            scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = FastOutSlowInEasing))
-                                    }
-
-                                    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                        fadeOut(tween(160, easing = FastOutSlowInEasing)) +
-                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160, easing = FastOutSlowInEasing))
-                                    }
-
-                                    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-                                            scaleIn(initialScale = 0.98f, animationSpec = tween(220, easing = FastOutSlowInEasing))
-                                    }
-
-                                    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                        fadeOut(tween(160, easing = FastOutSlowInEasing)) +
-                                            scaleOut(targetScale = 1.02f, animationSpec = tween(160, easing = FastOutSlowInEasing))
-                                    }
-                                }
+                                defaultTransitions = TabTransitions
                             )
                         }
                         
@@ -501,78 +487,81 @@ private fun BottomBar(
         }
     }
 
-    Surface(
+    val safeInsets = WindowInsets.navigationBars.union(WindowInsets.displayCutout)
+    val dockColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val backdropColor = MaterialTheme.colorScheme.background
+    val backdropHeight = 106.dp + with(LocalDensity.current) { safeInsets.getBottom(this).toDp() }
+
+    // The backdrop blocks page text behind the dock. System insets live outside
+    // the fixed-height NavigationBar, rather than stealing the icon/label space.
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.96f),
-        tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.7f))
-    ) {
-        NavigationBar(
-            modifier = Modifier.height(76.dp),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp
-        ) {
-            visibleDestinations.forEachIndexed { index, destination ->
-                NavigationBarItem(
-                    selected = index == effectiveSelectedIndex,
-                    onClick = { navigateTo(destination) },
-                    icon = {
-                        val icon = if (index == effectiveSelectedIndex) {
-                            destination.iconSelected
-                        } else {
-                            destination.iconNotSelected
-                        }
-                        if (destination == BottomBarDestination.Ghostlock) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (index == effectiveSelectedIndex) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = stringResource(destination.label),
-                                    tint = if (index == effectiveSelectedIndex) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = stringResource(destination.label)
-                            )
-                        }
-                    },
-                    label = {
-                        Text(
-                            text = stringResource(destination.label),
-                            maxLines = 1,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    },
-                    alwaysShowLabel = false,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            .background(
+                Brush.verticalGradient(
+                    0f to backdropColor.copy(alpha = 0f),
+                    0.22f to backdropColor,
+                    1f to backdropColor,
+                    endY = with(LocalDensity.current) { backdropHeight.toPx() }
                 )
+            )
+            .windowInsetsPadding(safeInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = dockColor,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            NavigationBar(
+                modifier = Modifier.height(80.dp),
+                containerColor = dockColor,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets(0, 0, 0, 0)
+            ) {
+                visibleDestinations.forEachIndexed { index, destination ->
+                    val selected = index == effectiveSelectedIndex
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.08f else 1f,
+                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        label = "tabIconScale"
+                    )
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = { navigateTo(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = if (selected) destination.iconSelected else destination.iconNotSelected,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .graphicsLayer {
+                                        scaleX = iconScale
+                                        scaleY = iconScale
+                                    }
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = stringResource(destination.label),
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                            )
+                        },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
             }
         }
     }

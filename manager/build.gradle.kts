@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3353
+    val minimumCommitCountForRelease = 3354
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // Crimson identity and the latest-release SUSFS LKM addon installer.
-    return "1.4.8"
+    // Inset-safe crimson dock and directional tab-switch animations.
+    return "1.4.9"
 }
 
 subprojects {

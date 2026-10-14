@@ -973,21 +973,12 @@ private fun TopBar(
                             rotationZ = rotation
                         }
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "CONTROL CENTER",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 1.2.sp
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         },
         actions = {
