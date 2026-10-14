@@ -84,8 +84,9 @@ fun download(
                             return@use id
                         }
                         DownloadManager.STATUS_FAILED -> {
+                            val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
                             onMain {
-                                onFailed(cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)))
+                                onFailed(reason)
                             }
                             return@use id
                         }

@@ -272,9 +272,12 @@ class MainActivity : ComponentActivity() {
 
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
+                // Remember the last valid navbar selection (persists across navbar hide/show)
+                val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
                 if (homeDestination != null && startRoute != null) {
                     BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
+                        lastValidNavbarSelection.value = 0
                         navigator.navigate(homeDestination.direction) {
                             popUpTo(NavGraphs.root) {
                                 saveState = true
@@ -296,9 +299,6 @@ class MainActivity : ComponentActivity() {
                     scrollOffset.value = 0f
                     previousScrollOffset.value = 0f
                 }
-
-                // Remember the last valid navbar selection (persists across navbar hide/show)
-                val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
                 LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
                     val pendingModuleId = moduleActionId?.takeIf { it.isNotBlank() }
@@ -378,6 +378,7 @@ class MainActivity : ComponentActivity() {
                             fun navigateToIndex(index: Int) {
                                 val destination = visibleDestinations.getOrNull(index) ?: return
                                 if (destination.direction.route == currentRoute) return
+                                lastValidNavbarSelection.value = index
 
                                 navigator.navigate(destination.direction) {
                                     popUpTo(NavGraphs.root.startRoute) {
@@ -515,10 +516,13 @@ private fun BottomBar(
     val resolvedNestedMatch = nestedMatch ?: previousRootMatch.takeIf { exactMatch < 0 }
     LaunchedEffect(exactMatch, resolvedNestedMatch) {
         when {
-            exactMatch >= 0 -> lastValidSelection.value = exactMatch
             resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> {
                 lastValidSelection.value = resolvedNestedMatch
             }
+            // Home can be emitted transiently while a nested destination's
+            // transition is starting. Only root tabs to the right update the
+            // remembered selection here; explicit tab taps update Home below.
+            exactMatch > 0 -> lastValidSelection.value = exactMatch
         }
     }
     val effectiveSelectedIndex = when {
@@ -531,6 +535,7 @@ private fun BottomBar(
 
     fun navigateTo(destination: BottomBarDestination) {
         if (destination.direction.route == currentRoute) return
+        lastValidSelection.value = visibleDestinations.indexOf(destination)
         navigator.navigate(destination.direction) {
             popUpTo(NavGraphs.root.startRoute) { saveState = true }
             launchSingleTop = true
