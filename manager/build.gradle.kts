@@ -51,13 +51,13 @@ fun getVersionCode(): Int {
     val commitCount = getGitCommitCount()
     val major = 1
     // Keep every published APK installable over the previous release.
-    val minimumCommitCountForRelease = 3354
+    val minimumCommitCountForRelease = 3356
     return major * 30000 + maxOf(commitCount, minimumCommitCountForRelease)
 }
 
 fun getVersionName(): String {
-    // Inset-safe crimson dock and directional tab-switch animations.
-    return "1.4.9"
+    // Nested-tab ownership and crash-safe module updates.
+    return "1.4.10"
 }
 
 subprojects {

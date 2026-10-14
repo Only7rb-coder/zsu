@@ -52,9 +52,19 @@ import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AddonsScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplateScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.CustomizationScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.DisguiseScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.MetaModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ksuApp
@@ -469,13 +479,54 @@ private fun BottomBar(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
     val exactMatch = visibleDestinations.indexOfFirst { it.direction.route == currentRoute }
-    LaunchedEffect(exactMatch) {
-        if (exactMatch >= 0) lastValidSelection.value = exactMatch
+    val previousRoute = navController.previousBackStackEntry?.destination?.route
+    val previousRootMatch = visibleDestinations.indexOfFirst {
+        destinationRouteMatches(previousRoute, it.direction.route)
     }
-    val effectiveSelectedIndex = if (exactMatch >= 0) {
-        exactMatch
-    } else {
+    val nestedRoutesByTab = remember {
+        listOf(
+            // Home can open the stock installer directly.
+            setOf(InstallScreenDestination.route),
+            // Manage owns all root-only manager workflows and their detail screens.
+            setOf(
+                ModuleScreenDestination.route,
+                ModuleRepoScreenDestination.route,
+                MetaModuleScreenDestination.route,
+                AddonsScreenDestination.route,
+                SuperUserScreenDestination.route,
+                SulogScreenDestination.route,
+                AppProfileScreenDestination.route,
+                ExecuteModuleActionScreenDestination.route,
+            ),
+            // BL Root currently has no separate child destination.
+            emptySet(),
+            // Settings owns these screens. Backup/restore is intentionally omitted
+            // because it can be opened from both Settings and Manage.
+            setOf(
+                AppProfileTemplateScreenDestination.route,
+                DeveloperScreenDestination.route,
+                CustomizationScreenDestination.route,
+                DisguiseScreenDestination.route,
+            )
+        )
+    }
+    val nestedMatch = nestedTabIndexForRoute(currentRoute, nestedRoutesByTab)
+        ?.let { nestedIndex -> visibleDestinations.getOrNull(nestedIndex)?.let { nestedIndex } }
+    val resolvedNestedMatch = nestedMatch ?: previousRootMatch.takeIf { exactMatch < 0 }
+    LaunchedEffect(exactMatch, resolvedNestedMatch) {
+        when {
+            exactMatch >= 0 -> lastValidSelection.value = exactMatch
+            resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> {
+                lastValidSelection.value = resolvedNestedMatch
+            }
+        }
+    }
+    val effectiveSelectedIndex = when {
+        exactMatch >= 0 -> exactMatch
+        resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> resolvedNestedMatch
+        else -> {
         lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
+        }
     }
 
     fun navigateTo(destination: BottomBarDestination) {

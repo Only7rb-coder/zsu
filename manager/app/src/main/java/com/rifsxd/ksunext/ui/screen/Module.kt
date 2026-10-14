@@ -534,6 +534,7 @@ private fun ModuleList(
     val downloadingText = stringResource(R.string.module_downloading)
     val startDownloadingText = stringResource(R.string.module_start_downloading)
     val fetchChangeLogFailed = stringResource(R.string.module_changelog_failed)
+    val downloadFailed = stringResource(R.string.module_download_failed)
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -543,6 +544,7 @@ private fun ModuleList(
     val confirmDialog = rememberConfirmDialog()
 
     var expandedModuleId by rememberSaveable { mutableStateOf<String?>(null) }
+    var activeDownloadId by rememberSaveable { mutableLongStateOf(-1L) }
 
     suspend fun onModuleUpdate(
         module: ModuleViewModel.ModuleInfo,
@@ -596,7 +598,7 @@ private fun ModuleList(
         showToast(startDownloadingText.format(module.name))
 
         val downloading = downloadingText.format(module.name)
-        withContext(Dispatchers.IO) {
+        val downloadId = withContext(Dispatchers.IO) {
             download(
                 context,
                 downloadUrl,
@@ -607,9 +609,13 @@ private fun ModuleList(
                     launch(Dispatchers.Main) {
                         Toast.makeText(context, downloading, Toast.LENGTH_SHORT).show()
                     }
+                },
+                onFailed = { reason ->
+                    Toast.makeText(context, downloadFailed.format(reason), Toast.LENGTH_LONG).show()
                 }
             )
         }
+        if (downloadId >= 0L) activeDownloadId = downloadId
     }
 
     suspend fun onModuleUninstall(module: ModuleViewModel.ModuleInfo) {
@@ -751,15 +757,25 @@ private fun ModuleList(
                             },
                             onUpdate = {
                                 scope.launch {
-                                    updatedModule?.let { update ->
-                                        onModuleUpdate(
-                                            module,
-                                            update.changelog,
-                                            update.zipUrl,
-                                            "${module.name}-${update.version}.zip"
+                                    try {
+                                        updatedModule?.let { update ->
+                                            onModuleUpdate(
+                                                module,
+                                                update.changelog,
+                                                update.zipUrl,
+                                                "${module.name}-${update.version}.zip"
+                                            )
+                                        }
+                                    } catch (e: kotlinx.coroutines.CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        snackBarHost.showSnackbar(
+                                            downloadFailed.format(e.message ?: module.name),
+                                            duration = SnackbarDuration.Long
                                         )
+                                    } finally {
+                                        viewModel.markNeedRefresh()
                                     }
-                                    viewModel.markNeedRefresh()
                                 }
                             },
                             onClick = {
@@ -780,7 +796,14 @@ private fun ModuleList(
             }
         }
 
-        DownloadListener(context, onInstallModule)
+        DownloadListener(
+            context = context,
+            onDownloaded = onInstallModule,
+            downloadId = activeDownloadId.takeIf { it >= 0L },
+            onFailed = { reason ->
+                Toast.makeText(context, downloadFailed.format(reason), Toast.LENGTH_LONG).show()
+            }
+        )
     }
 }
 
