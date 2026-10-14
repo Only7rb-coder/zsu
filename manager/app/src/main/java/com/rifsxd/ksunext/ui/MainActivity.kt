@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -273,7 +274,7 @@ class MainActivity : ComponentActivity() {
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
                 // Remember the last valid navbar selection (persists across navbar hide/show)
-                val lastValidNavbarSelection = remember { mutableStateOf(0) }
+                val lastValidNavbarSelection = rememberSaveable { mutableIntStateOf(0) }
 
                 if (homeDestination != null && startRoute != null) {
                     BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
