@@ -94,6 +94,11 @@ private val HIDE_UNLOCKED_MODULES = listOf(
 private val BRENE_MODULE = ModuleSpec("BRENE (susfs)", "rrr333nnn333/BRENE") {
     it.endsWith(".zip")
 }
+// Resolve the current stable release on every press, not the original v2.3.0 URL.
+// ksud installs or updates the module with the same susfs_lkm_loader ID.
+private val SUSFS_LKM_MODULE = ModuleSpec("SUSFS LKM Loader", "matsuzaka-yuki/susfs-lkm-module") {
+    it.startsWith("susfs-lkm-module-") && it.endsWith("-arm64-multi-kmi.zip")
+}
 private const val GPS_SETTER_APK_URL =
     "https://github.com/Xposed-Modules-Repo/io.github.jqssun.gpssetter/releases/download/6-0.0.6/app-full-arm64-v8a-release.apk"
 private const val LEGACY_GPS_SETTER_APK_URL =
@@ -227,7 +232,8 @@ private object AddonInstaller {
             override fun onAddElement(s: String?) { s?.let(onLog) }
         }
         val result = createRootShell(true).use { shell ->
-            shell.newJob().add("$ksud module install ${zip.absolutePath}").to(cb, cb).exec()
+            shell.newJob().add("${shellQuote(ksud)} module install ${shellQuote(zip.absolutePath)}")
+                .to(cb, cb).exec()
         }
         return result.isSuccess
     }
@@ -272,7 +278,7 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
         // Decode them before displaying the output so the log never becomes a single
         // unreadable terminal-width line like the old screenshot.
         val readable = s.replace("\\r", "\r").replace("\\n", "\n")
-        log += readable.trimEnd() + "\n"
+        scope.launch { log += readable.trimEnd() + "\n" }
     }
     fun updateProgress(progress: Float, status: String) {
         scope.launch {
@@ -293,16 +299,16 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 modules.forEachIndexed { index, spec ->
                     val completedShare = index.toFloat() / modules.size
                     val moduleShare = 1f / modules.size
+                    val zip = File(
+                        ksuApp.cacheDir,
+                        "addon_${spec.label.replace(Regex("[^A-Za-z0-9._-]"), "_")}.zip"
+                    )
                     try {
                         updateProgress(completedShare, "Resolving ${spec.label}…")
                         appendLog("» ${spec.label}: resolving latest ${if (spec.beta) "Canary " else ""}release…")
                         val (url, tag) = AddonInstaller.resolveLatest(spec)
                         updateProgress(completedShare + moduleShare * 0.08f, "Downloading ${spec.label}…")
                         appendLog("  ${spec.label} $tag — downloading…")
-                        val zip = File(
-                            ksuApp.cacheDir,
-                            "addon_${spec.label.replace(Regex("[^A-Za-z0-9._-]"), "_")}.zip"
-                        )
                         AddonInstaller.download(url, zip) { downloadProgress ->
                             updateProgress(
                                 completedShare + moduleShare * (0.08f + downloadProgress * 0.57f),
@@ -312,7 +318,6 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                         updateProgress(completedShare + moduleShare * 0.68f, "Installing ${spec.label}…")
                         appendLog("  installing…")
                         val ok = AddonInstaller.flashModuleZip(zip) { appendLog("  $it") }
-                        zip.delete()
                         if (ok) {
                             appendLog("✓ ${spec.label} installed")
                         } else {
@@ -322,6 +327,8 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                     } catch (e: Exception) {
                         failed++
                         appendLog("✗ ${spec.label}: ${e.message}")
+                    } finally {
+                        zip.delete()
                     }
                     updateProgress(
                         (index + 1).toFloat() / modules.size,
@@ -478,7 +485,8 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
             modifier = Modifier
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
+                .padding(bottom = 112.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -532,6 +540,14 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 icon = Icons.Filled.AutoFixHigh,
                 enabled = !busy,
                 onClick = dropUnlessResumed { runInstall("BRENE", listOf(BRENE_MODULE)) }
+            )
+
+            AddonActionCard(
+                title = "Install / Update SUSFS LKM",
+                subtitle = "Latest stable arm64 multi-KMI loader • Reboot required",
+                icon = Icons.Filled.Shield,
+                enabled = !busy,
+                onClick = dropUnlessResumed { runInstall("SUSFS LKM", listOf(SUSFS_LKM_MODULE)) }
             )
 
             if (busy || installStatus.isNotBlank()) {
