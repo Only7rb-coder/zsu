@@ -8,6 +8,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import java.io.File
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,55 +33,83 @@ fun download(
     onDownloading: () -> Unit = {},
     onFailed: (Int) -> Unit = {}
 ): Long {
-    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val mainHandler = Handler(Looper.getMainLooper())
+    fun onMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
+    }
 
-    val query = DownloadManager.Query()
-    query.setFilterByStatus(
-        DownloadManager.STATUS_RUNNING or
-            DownloadManager.STATUS_PAUSED or
-            DownloadManager.STATUS_PENDING or
-            DownloadManager.STATUS_SUCCESSFUL or
-            DownloadManager.STATUS_FAILED
-    )
-    downloadManager.query(query).use { cursor ->
-        while (cursor.moveToNext()) {
-            val id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
-            val uri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI))
-            val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
-            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            val columnTitle = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
-            if (url == uri || fileName == columnTitle) {
-                when (status) {
-                    DownloadManager.STATUS_RUNNING,
-                    DownloadManager.STATUS_PENDING,
-                    DownloadManager.STATUS_PAUSED -> {
-                        onDownloading()
-                        return id
-                    }
-                    DownloadManager.STATUS_SUCCESSFUL -> {
-                        if (!localUri.isNullOrBlank()) onDownloaded(localUri.toUri())
-                        return id
-                    }
-                    DownloadManager.STATUS_FAILED -> {
-                        onFailed(cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)))
-                        return id
+    val safeFileName = fileName
+        .substringAfterLast('/')
+        .replace(Regex("[^A-Za-z0-9._-]"), "_")
+        .trim('.', '_')
+        .ifBlank { "zsu-module-${System.currentTimeMillis()}.zip" }
+
+    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+        ?: run {
+            onMain { onFailed(DownloadManager.ERROR_UNKNOWN) }
+            return -1L
+        }
+
+    return try {
+        val requestUri = url.toUri()
+        require(requestUri.scheme == "http" || requestUri.scheme == "https") {
+            "Unsupported module download URL"
+        }
+
+        val query = DownloadManager.Query()
+        query.setFilterByStatus(
+            DownloadManager.STATUS_RUNNING or
+                DownloadManager.STATUS_PAUSED or
+                DownloadManager.STATUS_PENDING or
+                DownloadManager.STATUS_SUCCESSFUL or
+                DownloadManager.STATUS_FAILED
+        )
+        val existingId = downloadManager.query(query).use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
+                val uri = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_URI))
+                val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
+                val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                val columnTitle = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
+                if (url == uri || safeFileName == columnTitle) {
+                    when (status) {
+                        DownloadManager.STATUS_RUNNING,
+                        DownloadManager.STATUS_PENDING,
+                        DownloadManager.STATUS_PAUSED -> {
+                            onMain(onDownloading)
+                            return@use id
+                        }
+                        DownloadManager.STATUS_SUCCESSFUL -> {
+                            if (!localUri.isNullOrBlank()) onMain { onDownloaded(localUri.toUri()) }
+                            return@use id
+                        }
+                        DownloadManager.STATUS_FAILED -> {
+                            val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                            onMain {
+                                onFailed(reason)
+                            }
+                            return@use id
+                        }
                     }
                 }
             }
+            null
         }
+        if (existingId != null) return existingId
+
+        val request = DownloadManager.Request(requestUri)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFileName)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setMimeType("application/zip")
+            .setTitle(safeFileName)
+            .setDescription(description)
+
+        downloadManager.enqueue(request)
+    } catch (e: Exception) {
+        Log.e("ZSU-Downloader", "Unable to enqueue download: $url", e)
+        onMain { onFailed(DownloadManager.ERROR_UNKNOWN) }
+        -1L
     }
-
-    val request = DownloadManager.Request(url.toUri())
-        .setDestinationInExternalPublicDir(
-            Environment.DIRECTORY_DOWNLOADS,
-            fileName
-        )
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setMimeType("application/zip")
-        .setTitle(fileName)
-        .setDescription(description)
-
-    return downloadManager.enqueue(request)
 }
 
 fun installDownloadedApk(context: Context, uri: Uri): Boolean {
@@ -190,10 +221,15 @@ fun DownloadListener(
                                 val uri = cursor.getString(
                                     cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)
                                 )
-                                if (!uri.isNullOrBlank()) onDownloaded(uri.toUri())
+                                if (!uri.isNullOrBlank()) {
+                                    Handler(Looper.getMainLooper()).post {
+                                        onDownloaded(uri.toUri())
+                                    }
+                                }
                             }
                             DownloadManager.STATUS_FAILED -> {
-                                onFailed(cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)))
+                                val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                                Handler(Looper.getMainLooper()).post { onFailed(reason) }
                             }
                         }
                     }

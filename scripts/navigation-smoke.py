@@ -42,6 +42,25 @@ def tab_node(tree: ET.Element, label: str) -> ET.Element:
     return max(matches, key=lambda n: bounds(n)[1])
 
 
+def app_text_node(tree: ET.Element, text: str) -> ET.Element:
+    matches = [
+        n for n in tree.iter("node")
+        if n.get("package") == PACKAGE and n.get("text") == text and bounds(n)[3] > 0
+    ]
+    assert matches, f"App text not exposed/visible: {text}"
+    return max(matches, key=lambda n: bounds(n)[1])
+
+
+def selected_tab_ancestor(tree: ET.Element, label: str) -> bool:
+    def walk(node: ET.Element, selected: bool = False) -> bool:
+        selected = selected or node.get("selected") == "true"
+        if node.get("package") == PACKAGE and node.get("text") == label:
+            return selected
+        return any(walk(child, selected) for child in node)
+
+    return walk(tree)
+
+
 def check_dock(tree: ET.Element) -> None:
     nodes = [tab_node(tree, label) for label in TABS]
     tops = [bounds(n)[1] for n in nodes]
@@ -97,6 +116,25 @@ def main() -> None:
                 assert "CONTROL CENTER" not in ET.tostring(tree, encoding="unicode")
             assert adb("shell", "pidof", PACKAGE).strip(), "ZSU process stopped during navigation"
             print(f"PASS: {mode} → {label}; all four tab labels visible and aligned", flush=True)
+
+        settings = ui_tree(args.output, f"{mode}-settings-for-customization")
+        settings_tab = tab_node(settings, "Settings")
+        x1, y1, x2, y2 = bounds(settings_tab)
+        adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+        time.sleep(1)
+        settings = ui_tree(args.output, f"{mode}-settings-root")
+        customization = app_text_node(settings, "Customization")
+        x1, y1, x2, y2 = bounds(customization)
+        adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+        time.sleep(1)
+        customization_tree = ui_tree(args.output, f"{mode}-customization")
+        check_dock(customization_tree)
+        assert selected_tab_ancestor(customization_tree, "Settings"), \
+            f"Settings tab is not selected on Customization ({mode})"
+        assert not selected_tab_ancestor(customization_tree, "Home"), \
+            f"Home tab incorrectly selected on Customization ({mode})"
+        screenshot(args.output, f"{mode}-customization")
+        print(f"PASS: {mode} → Settings → Customization; Settings remains selected", flush=True)
     (args.output / "logcat.txt").write_text(adb("logcat", "-d", "-t", "2000"))
     print("Navigation smoke checks passed in gesture and three-button modes", flush=True)
 

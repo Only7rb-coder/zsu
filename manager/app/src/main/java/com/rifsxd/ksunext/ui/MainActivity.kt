@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,9 +53,19 @@ import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.HomeScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AddonsScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplateScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.CustomizationScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.DisguiseScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.MetaModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ksuApp
@@ -262,9 +273,12 @@ class MainActivity : ComponentActivity() {
 
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
+                // Remember the last valid navbar selection (persists across navbar hide/show)
+                val lastValidNavbarSelection = rememberSaveable { mutableIntStateOf(0) }
 
                 if (homeDestination != null && startRoute != null) {
                     BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
+                        lastValidNavbarSelection.value = 0
                         navigator.navigate(homeDestination.direction) {
                             popUpTo(NavGraphs.root) {
                                 saveState = true
@@ -286,9 +300,6 @@ class MainActivity : ComponentActivity() {
                     scrollOffset.value = 0f
                     previousScrollOffset.value = 0f
                 }
-
-                // Remember the last valid navbar selection (persists across navbar hide/show)
-                val lastValidNavbarSelection = remember { mutableStateOf(0) }
 
                 LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
                     val pendingModuleId = moduleActionId?.takeIf { it.isNotBlank() }
@@ -368,6 +379,7 @@ class MainActivity : ComponentActivity() {
                             fun navigateToIndex(index: Int) {
                                 val destination = visibleDestinations.getOrNull(index) ?: return
                                 if (destination.direction.route == currentRoute) return
+                                lastValidNavbarSelection.value = index
 
                                 navigator.navigate(destination.direction) {
                                     popUpTo(NavGraphs.root.startRoute) {
@@ -469,17 +481,67 @@ private fun BottomBar(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
     val exactMatch = visibleDestinations.indexOfFirst { it.direction.route == currentRoute }
-    LaunchedEffect(exactMatch) {
-        if (exactMatch >= 0) lastValidSelection.value = exactMatch
+    val previousRoute = navController.previousBackStackEntry?.destination?.route
+    val previousRootMatch = visibleDestinations.indexOfFirst {
+        destinationRouteMatches(previousRoute, it.direction.route)
     }
-    val effectiveSelectedIndex = if (exactMatch >= 0) {
-        exactMatch
-    } else {
-        lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
+    val nestedRoutesByTab = remember {
+        listOf(
+            // Home can open the stock installer directly.
+            setOf(InstallScreenDestination.route),
+            // Manage owns all root-only manager workflows and their detail screens.
+            setOf(
+                ModuleScreenDestination.route,
+                ModuleRepoScreenDestination.route,
+                MetaModuleScreenDestination.route,
+                AddonsScreenDestination.route,
+                SuperUserScreenDestination.route,
+                SulogScreenDestination.route,
+                AppProfileScreenDestination.route,
+                ExecuteModuleActionScreenDestination.route,
+            ),
+            // BL Root currently has no separate child destination.
+            emptySet(),
+            // Settings owns these screens. Backup/restore is intentionally omitted
+            // because it can be opened from both Settings and Manage.
+            setOf(
+                AppProfileTemplateScreenDestination.route,
+                DeveloperScreenDestination.route,
+                CustomizationScreenDestination.route,
+                DisguiseScreenDestination.route,
+            )
+        )
+    }
+    val nestedMatch = nestedTabIndexForRoute(currentRoute, nestedRoutesByTab)
+        ?.let { nestedIndex -> visibleDestinations.getOrNull(nestedIndex)?.let { nestedIndex } }
+    val resolvedNestedMatch = nestedMatch ?: previousRootMatch.takeIf { exactMatch < 0 }
+    LaunchedEffect(exactMatch, resolvedNestedMatch) {
+        when {
+            resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> {
+                lastValidSelection.value = resolvedNestedMatch
+            }
+            // Home can be emitted transiently while a nested destination's
+            // transition is starting. Only root tabs to the right update the
+            // remembered selection here; explicit tab taps update Home below.
+            exactMatch > 0 -> lastValidSelection.value = exactMatch
+        }
+    }
+    val effectiveSelectedIndex = when {
+        nestedMatch != null -> nestedMatch
+        exactMatch > 0 -> exactMatch
+        // A Home route can be emitted briefly while a nested destination is
+        // entering. Keep the explicit/remembered parent selection in that
+        // window; real Home tab taps update the state before navigation.
+        exactMatch == 0 -> lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
+        resolvedNestedMatch != null && resolvedNestedMatch >= 0 -> resolvedNestedMatch
+        else -> {
+            lastValidSelection.value.coerceIn(0, visibleDestinations.lastIndex)
+        }
     }
 
     fun navigateTo(destination: BottomBarDestination) {
         if (destination.direction.route == currentRoute) return
+        lastValidSelection.value = visibleDestinations.indexOf(destination)
         navigator.navigate(destination.direction) {
             popUpTo(NavGraphs.root.startRoute) { saveState = true }
             launchSingleTop = true
