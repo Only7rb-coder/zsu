@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "release": "6.1.134-android14-11-maybe-dirty",
+  "kernel_major": 6,
+  "kernel_phys_load": 2818572288,
+  "kernel_phys_offset": 2147483648,
+  "compact_waiter": 1,
+  "kernelsnitch_collisions": 4,
+  "mm_struct_sz": 1024,
+  "task_prio": 132,
+  "task_normal_prio": 140,
+  "task_sched_task_group": 840,
+  "task_pi_lock": 2340,
+  "task_pi_waiters": 2360,
+  "task_pi_top_task": 2376,
+  "task_pi_blocked_on": 2384,
+  "task_pid": 1584,
+  "task_tgid": 1588,
+  "task_atomic_flags": 1520,
+  "task_real_cred": 2096,
+  "task_cred": 2104,
+  "task_comm": 2120,
+  "task_tasks": 1360,
+  "task_seccomp": 2304,
+  "cred_copy_size": 136,
+  "cred_usage_value": 1,
+  "cred_caps_offset": 40,
+  "cred_caps_count": 5,
+  "cred_caps_value": -1,
+  "off_init_task": 47183360,
+  "off_init_cred": 47258216,
+  "off_empty_zero_page": 49168384,
+  "off_root_task_group": 49198464,
+  "off_selinux_enforcing": 49533992,
+  "off_selinux_blob_sizes": 36344040,
+  "off_security_hook_heads": 36342232,
+  "off_slide_nfulnl_logger": 47131080,
+  "off_slide_loggers_0_1": 47130904,
+  "off_slide_boot_id": 49674640,
+  "execution": {
+    "recommended_cpus": {
+      "main": 4,
+      "consumer": 5
+    },
+    "stages": {
+      "w1_attempts": 25
+    }
+  }
+}

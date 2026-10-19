@@ -339,6 +339,7 @@ static int fill_execution_settings(const char *object, const char *object_end,
   };
   static const struct execution_field race[] = {
       EXEC_FIELD("route_wait_ms", race_route_wait_ms),
+      EXEC_FIELD("route_done_timeout_ms", race_route_done_timeout_ms),
       EXEC_FIELD("setup_settle_us", race_setup_settle_us),
       EXEC_FIELD("state_poll_interval_us", race_state_poll_interval_us),
   };

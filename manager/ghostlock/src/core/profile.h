@@ -8,7 +8,7 @@ struct execution_settings {
   uint32_t recommended_main_cpu, recommended_consumer_cpu;
   uint32_t heap_prepare_max_attempts, heap_prepare_timeout_ms;
   uint32_t heap_kernelsnitch_timeout_ms;
-  uint32_t race_route_wait_ms, race_setup_settle_us;
+  uint32_t race_route_wait_ms, race_route_done_timeout_ms, race_setup_settle_us;
   uint32_t race_state_poll_interval_us;
   uint32_t w1_attempts, w1_settle_us, w1_scratch_repair_attempts;
   uint32_t w2_attempts, w2_settle_us;

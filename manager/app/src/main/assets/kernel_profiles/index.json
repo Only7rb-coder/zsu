@@ -244,6 +244,38 @@
     {
       "release": "6.6.89-android15-8-g5a0ffb447c1d-ab13771415-4k",
       "file": "6.6.89-android15-8-g5a0ffb447c1d-ab13771415-4k.json"
+    },
+    {
+      "release": "5.15.178-android13-8-00025-g7feb0b0b7cd8-ab14134651",
+      "file": "5.15.178-android13-8-00025-g7feb0b0b7cd8-ab14134651.json"
+    },
+    {
+      "release": "5.15.206-android13-8-00056-g3f87b8704e9e-ab15683575",
+      "file": "5.15.206-android13-8-00056-g3f87b8704e9e-ab15683575.json"
+    },
+    {
+      "release": "6.1.134-android14-11-maybe-dirty",
+      "file": "6.1.134-android14-11-maybe-dirty.json"
+    },
+    {
+      "release": "6.1.138-android14-11-g51f8c580613d-ab13911623",
+      "file": "6.1.138-android14-11-g51f8c580613d-ab13911623.json"
+    },
+    {
+      "release": "6.1.157-android14-11-g82d681c9b06b-ab14634535",
+      "file": "6.1.157-android14-11-g82d681c9b06b-ab14634535.json"
+    },
+    {
+      "release": "6.1.25-android14-11-maybe-dirty",
+      "file": "6.1.25-android14-11-maybe-dirty.json"
+    },
+    {
+      "release": "6.12.38-android16-5-gb575a0b6e647-ab14355190-4k",
+      "file": "6.12.38-android16-5-gb575a0b6e647-ab14355190-4k.json"
+    },
+    {
+      "release": "6.6.30-android15-8-g24ffe62b0a0e-abogki387229724-4k",
+      "file": "6.6.30-android15-8-g24ffe62b0a0e-abogki387229724-4k.json"
     }
   ]
 }

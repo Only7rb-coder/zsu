@@ -12,6 +12,7 @@
     },
     "race": {
       "route_wait_ms": 1000,
+      "route_done_timeout_ms": 30000,
       "setup_settle_us": 50000,
       "state_poll_interval_us": 1000
     },
