@@ -57,7 +57,7 @@ fun getVersionCode(): Int {
 
 fun getVersionName(): String {
     // Nested-tab ownership and crash-safe module updates.
-    return "1.4.10"
+    return "1.4.11"
 }
 
 subprojects {
