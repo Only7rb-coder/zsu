@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Nested-tab ownership and crash-safe module updates.
-    return "1.4.11"
+    // GhostLock helper cleanup and Red Magic retry hardening.
+    return "1.4.12"
 }
 
 subprojects {

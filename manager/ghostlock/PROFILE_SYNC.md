@@ -30,6 +30,8 @@ Profiles may omit the `execution` object because ZSU supplies shared execution d
 
 The native PI-race coordinator now enforces `execution.race.route_done_timeout_ms` using `CLOCK_MONOTONIC`. If a kernel route fails to signal completion before the profile deadline, the native process fail-stops instead of waiting indefinitely for the manager's outer watchdog. The default is 30 seconds because the route-specific waits are sub-second to a few seconds; profiles can override it when a device-specific route window is known.
 
+The Red Magic 11 Pro / Tablet 5 Pro profile (`6.12.23-android16-5-gf1bdb13583da-ab13761046-4k`) now limits heap-page preparation to two attempts and 180 seconds. This avoids stacking four full sprays on devices where one attempt already takes roughly 100 seconds. All heap helper PID sets are now reaped centrally on every cleanup path, and the Android runner reports exit 137 as an explicit SIGKILL/resource-pressure failure instead of a generic exit code.
+
 ## Verification status
 
 - `make -C manager/ghostlock address-space-host-test profile-catalog-host-test` checks physical-base translation, index uniqueness and file/release consistency, required profile fields, and every fully resolved profile through the native JSON loader.

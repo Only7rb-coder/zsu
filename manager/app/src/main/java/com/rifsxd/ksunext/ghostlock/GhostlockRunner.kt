@@ -105,10 +105,14 @@ object GhostlockRunner {
         }
         val exitCode = if (finished) process.exitValue() else -1
         val finalOutput = synchronized(output) { output.toString().trim() }
-        val prefix = if (!finished) {
-            "GhostLock timed out after $TIMEOUT_SECONDS seconds"
-        } else {
-            "GhostLock exited with code $exitCode"
+        val prefix = when {
+            !finished -> "GhostLock timed out after $TIMEOUT_SECONDS seconds"
+            exitCode == 137 ->
+                "GhostLock was killed by SIGKILL (137), usually Android memory/process pressure; " +
+                    "helper cleanup has been hardened, so reboot before retrying"
+            exitCode > 128 ->
+                "GhostLock was terminated by signal ${exitCode - 128} (exit $exitCode)"
+            else -> "GhostLock exited with code $exitCode"
         }
         runCatching { File(workDir, RESULT_LOG_NAME).writeText(finalOutput) }
         return Result(

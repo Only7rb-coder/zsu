@@ -285,8 +285,19 @@ void kill_child(pid_t child) {
   if (child <= 0) {
     return;
   }
-  SYSCHK(kill(child, SIGKILL));
-  SYSCHK(waitpid(child, NULL, 0));
+  /* A failed attempt may already have reaped the helper, or PDEATHSIG may
+   * have killed it while another cleanup path was running. Treat those two
+   * states as already-clean instead of routing them through SYSCHK and
+   * obscuring the real failure. */
+  if (kill(child, SIGKILL) < 0 && errno != ESRCH) {
+    pr_warning("kill helper %d: %m\n", child);
+  }
+  for (;;) {
+    if (waitpid(child, NULL, 0) >= 0) break;
+    if (errno == EINTR) continue;
+    if (errno != ECHILD) pr_warning("wait helper %d: %m\n", child);
+    break;
+  }
 }
 
 /* Decoupling plan: release the current reclaim socket pair. Input/output: heap
@@ -350,10 +361,31 @@ void free_ctx_storage(struct mm_ctx *ctx) {
   ctx->mm_cnt = 0;
 }
 
+/* Reap every still-owned heap shaper before releasing its PID array. This is
+ * intentionally idempotent: normal spray completion kills most helpers early,
+ * while route/error cleanup may reach this function with live children. */
+static void kill_ctx_children(struct mm_ctx *ctx) {
+  if (!ctx || !ctx->childs) return;
+  for (size_t i = 0; i < ctx->mm_cnt; i++) {
+    if (ctx->childs[i] > 0) {
+      kill_child(ctx->childs[i]);
+      ctx->childs[i] = 0;
+    }
+  }
+}
+
 /* Decoupling plan: clean one heap-preparation attempt. Input: HeapContext;
  * output: all attempt-owned resources released. Future:
  * heap_context_reset_attempt(), separate from route cleanup. */
 void cleanup_page_prepare_state(void) {
+  kill_ctx_children(&prepare_ctx);
+  kill_ctx_children(&spray_ctx);
+  kill_ctx_children(&pre_ctx);
+  kill_ctx_children(&post_ctx);
+  if (child_leak > 0) {
+    kill_child(child_leak);
+    child_leak = 0;
+  }
   close_ctx_memfds(&prepare_ctx);
   close_ctx_memfds(&spray_ctx);
   close_ctx_memfds(&pre_ctx);

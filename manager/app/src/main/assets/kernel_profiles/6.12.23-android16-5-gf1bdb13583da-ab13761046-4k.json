@@ -39,8 +39,8 @@
       "consumer": 1
     },
     "heap": {
-      "prepare_max_attempts": 4,
-      "prepare_timeout_ms": 240000,
+      "prepare_max_attempts": 2,
+      "prepare_timeout_ms": 180000,
       "kernelsnitch_timeout_ms": 60000
     },
     "race": {
