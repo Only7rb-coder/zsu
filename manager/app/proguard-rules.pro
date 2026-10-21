@@ -39,3 +39,7 @@
 -dontwarn javax.tools.Diagnostic$Kind
 # ZSU: keep vendored on-device v2 signer
 -keep class com.rifsxd.ksunext.signing.** { *; }
+
+# Generated identity clones reference these classes from a patched manifest;
+# the normal manifest does not, so R8 must not remove them.
+-keep class com.zsu.disguise.** { *; }

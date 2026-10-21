@@ -21,6 +21,11 @@ public final class JailbreakZygotePreload implements ZygotePreload {
         try {
             System.loadLibrary("kernelsu");
             File ksud = new File(appInfo.nativeLibraryDir, "libksud.so");
+            if (!ksud.isFile()) {
+                // Generated identity clones rename the payload so the clone
+                // does not expose the normal manager library anchor.
+                ksud = new File(appInfo.nativeLibraryDir, "libzsu.so");
+            }
             forkDontCareAndExecLateLoad(ksud.getAbsolutePath(), appInfo.packageName);
         } catch (Throwable error) {
             Log.e(TAG, "Late-load bootstrap failed", error);

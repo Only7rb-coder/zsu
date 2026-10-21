@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // GhostLock helper cleanup and Red Magic retry hardening.
-    return "1.4.12"
+    // Spoofed APK identity and daemon-path compatibility hardening.
+    return "1.4.13"
 }
 
 subprojects {

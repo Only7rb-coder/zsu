@@ -25,6 +25,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.createRootShell
+import com.rifsxd.ksunext.ui.util.getKsuDaemonFile
 import com.topjohnwu.superuser.CallbackList
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
@@ -227,7 +228,7 @@ private object AddonInstaller {
 
     /** Runs `ksud module install <zip>` in a root shell, streaming output to [onLog]. */
     fun flashModuleZip(zip: File, onLog: (String) -> Unit): Boolean {
-        val ksud = ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
+        val ksud = getKsuDaemonFile().absolutePath
         val cb = object : CallbackList<String?>() {
             override fun onAddElement(s: String?) { s?.let(onLog) }
         }

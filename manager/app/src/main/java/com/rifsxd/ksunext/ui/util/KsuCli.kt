@@ -35,7 +35,7 @@ private const val TAG = "KsuCli"
 private const val BUSYBOX = "/data/adb/ksu/bin/busybox"
 
 private fun getKsuDaemonPath(): String {
-    return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
+    return getKsuDaemonFile().absolutePath
 }
 
 data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {

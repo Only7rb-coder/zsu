@@ -31,6 +31,12 @@ object DisguiseEngine {
     private const val CHUNK_START_TAG = 0x0102
     private const val CHUNK_END_DOC = 0x0003
     private const val UTF8_FLAG = 0x100
+    private const val KSUD_LIBRARY_NAME = "libksud.so"
+    private const val DISGUISED_KSUD_LIBRARY_NAME = "libzsu.so"
+    private const val APPLICATION_CLASS = "com.rifsxd.ksunext.KernelSUApplication"
+    private const val DISGUISED_APPLICATION_CLASS = "com.zsu.disguise.DisguisedApplication"
+    private const val ZYGOTE_PRELOAD_CLASS = "com.rifsxd.ksunext.jailbreak.JailbreakZygotePreload"
+    private const val DISGUISED_ZYGOTE_PRELOAD_CLASS = "com.zsu.disguise.DisguisedZygotePreload"
 
     data class Params(
         val packageName: String,
@@ -338,7 +344,12 @@ object DisguiseEngine {
                 if (ze.isDirectory) continue
                 val data = zf.getInputStream(ze).readBytes()
                 val method = if (ze.method == java.util.zip.ZipEntry.STORED) METHOD_STORED else METHOD_DEFLATED
-                srcEntries.add(SrcEntry(ze.name, method, data))
+                val entryName = if (ze.name.startsWith("lib/") && ze.name.endsWith("/$KSUD_LIBRARY_NAME")) {
+                    ze.name.substringBeforeLast('/') + "/$DISGUISED_KSUD_LIBRARY_NAME"
+                } else {
+                    ze.name
+                }
+                srcEntries.add(SrcEntry(entryName, method, data))
             }
         }
 
@@ -355,6 +366,10 @@ object DisguiseEngine {
             strMap[curAppName] = params.appName
         }
         if (params.versionName.isNotBlank() && params.versionName != curVn) strMap[curVn] = params.versionName
+        // Keep generated clones functional without leaving the original
+        // manager application and zygote class names in their manifest.
+        strMap[APPLICATION_CLASS] = DISGUISED_APPLICATION_CLASS
+        strMap[ZYGOTE_PRELOAD_CLASS] = DISGUISED_ZYGOTE_PRELOAD_CLASS
 
         val iconPlan = params.iconPng?.let { IconPlan(it) }
 

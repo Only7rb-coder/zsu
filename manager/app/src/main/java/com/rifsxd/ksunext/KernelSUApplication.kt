@@ -23,7 +23,7 @@ import java.util.*
 
 lateinit var ksuApp: KernelSUApplication
 
-class KernelSUApplication : Application(), ViewModelStoreOwner {
+open class KernelSUApplication : Application(), ViewModelStoreOwner {
 
     lateinit var okhttpClient: OkHttpClient
     private val appViewModelStore by lazy { ViewModelStore() }

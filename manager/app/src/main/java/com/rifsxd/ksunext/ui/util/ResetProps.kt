@@ -192,7 +192,7 @@ object ResetProps {
             }
         }
         return try {
-            val daemonPath = File(ksuApp.applicationInfo.nativeLibraryDir, "libksud.so").absolutePath
+            val daemonPath = getKsuDaemonFile().absolutePath
             val scriptForExecution = script.replace("__ZSU_KSUD__", daemonPath)
             val result = createRootShell(true).use { shell ->
                 shell.newJob().add("sh -c ${'$'}{shellQuote(scriptForExecution)}").to(callback, callback).exec()
