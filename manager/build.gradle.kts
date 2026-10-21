@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Spoofed APK identity and daemon-path compatibility hardening.
-    return "1.4.13"
+    // CI spoofed packaging and daemon-path compatibility hardening.
+    return "1.4.14"
 }
 
 subprojects {
