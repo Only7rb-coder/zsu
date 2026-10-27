@@ -27,7 +27,6 @@ import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.createRootShell
 import com.rifsxd.ksunext.ui.util.getKsuDaemonFile
 import com.topjohnwu.superuser.CallbackList
-import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,8 +41,8 @@ import kotlin.math.roundToInt
 
 /**
  * ZSU "Addons" tab: one-tap installers for common root-hiding module sets.
- * Modules are fetched from their preferred release when configured, otherwise from the
- * latest matching GitHub release, including the TEESimulator-RS Canary pre-release channel.
+ * Modules are fetched from the latest matching GitHub release on every press. Stable modules
+ * use the latest stable release; TEESimulator follows its latest canary release channel.
  */
 private data class ModuleSpec(
     val label: String,
@@ -54,40 +53,28 @@ private data class ModuleSpec(
     val assetMatch: (String) -> Boolean
 )
 
-private const val TEESIMULATOR_RS_V6_0_1_324_URL =
-    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.3/TEESimulator-RS-v6.0.1-324-Release.zip"
-private const val SENSITIVE_PROPS_V6_5_0_60608_URL =
-    "https://github.com/Only7rb-coder/zsu/releases/download/v1.1.4/sensitive-props-v6.5.0-60608-release.zip"
-
 private val HIDE_UNLOCKED_MODULES = listOf(
     ModuleSpec(
-        "Zygisk Next",
-        "LSPosed/ZygiskNext"
+        "BreZygisk",
+        "rrr333nnn333/BreZygisk"
     ) {
-        it.startsWith("Zygisk-Next-") && it.endsWith("-release.zip")
+        it.startsWith("BreZygisk-") && it.endsWith("-release.zip", ignoreCase = true)
     },
     ModuleSpec(
-        "TEESimulator-RS v6.0.1-324",
-        "Only7rb-coder/zsu",
-        preferredTag = "v1.1.3",
-        fixedUrl = TEESIMULATOR_RS_V6_0_1_324_URL
+        "TEESimulator",
+        "JingMatrix/TEESimulator",
+        beta = true
     ) {
-        it == "TEESimulator-RS-v6.0.1-324-Release.zip"
+        it.startsWith("TEESimulator-v") &&
+            it.endsWith("-Release.zip", ignoreCase = true)
     },
     ModuleSpec(
-        "Sensitive Props v6.5.0-60608",
-        "Only7rb-coder/zsu",
-        preferredTag = "v1.1.4",
-        fixedUrl = SENSITIVE_PROPS_V6_5_0_60608_URL
+        "Play Integrity Fix",
+        "KOWX712/PlayIntegrityFix"
     ) {
-        it == "sensitive-props-v6.5.0-60608-release.zip"
+        it.startsWith("PlayIntegrityFix_") && it.endsWith(".zip", ignoreCase = true)
     },
-    ModuleSpec("Tricky Addon Enhanced", "Enginex0/tricky-addon-enhanced") {
-        it.startsWith("TA_enhanced-") &&
-            it.endsWith(".zip", ignoreCase = true) &&
-            !it.contains("-debug", ignoreCase = true)
-    },
-    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS", preferredTag = "oss-173") {
+    ModuleSpec("HMA-OSS-zygisk", "frknkrc44/HMA-OSS") {
         it.endsWith(".zip") && it.contains("ZYGISK") && it.contains("release")
     }
 )
@@ -239,16 +226,6 @@ private object AddonInstaller {
         return result.isSuccess
     }
 
-    /** Writes every installed package name into Tricky Store's target.txt (select all apps). */
-    fun selectAllAppsInTrickyTarget(onLog: (String) -> Unit): Boolean {
-        val cmd = "mkdir -p /data/adb/tricky_store && " +
-                "pm list packages | sed 's/^package://' | sort -u > /data/adb/tricky_store/target.txt && " +
-                "wc -l < /data/adb/tricky_store/target.txt"
-        val out = ArrayList<String>()
-        val result = Shell.cmd(cmd).to(out, out).exec()
-        out.lastOrNull()?.let { onLog("target.txt: $it apps selected") }
-        return result.isSuccess
-    }
 }
 
 private object AddonOperationStore {
@@ -508,14 +485,7 @@ fun AddonsScreen(navigator: DestinationsNavigator) {
                 highlighted = true,
                 enabled = !busy,
                 onClick = dropUnlessResumed {
-                    runInstall("Hide bundle", HIDE_UNLOCKED_MODULES) {
-                        appendLog("» Tricky Addon: selecting ALL apps in target.txt…")
-                        if (AddonInstaller.selectAllAppsInTrickyTarget { appendLog("  $it") }) {
-                            appendLog("✓ target.txt updated")
-                        } else {
-                            appendLog("✗ target.txt update failed (Tricky Store missing?)")
-                        }
-                    }
+                    runInstall("Hide bundle", HIDE_UNLOCKED_MODULES)
                 }
             )
 

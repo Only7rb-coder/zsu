@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // CI spoofed packaging and daemon-path compatibility hardening.
-    return "1.4.14"
+    // Addon bundle refresh: BreZygisk, TEESimulator, Play Integrity Fix, and latest HMA-OSS.
+    return "1.4.15"
 }
 
 subprojects {
