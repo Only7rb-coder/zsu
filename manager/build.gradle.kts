@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Addon bundle refresh: BreZygisk, TEESimulator, Play Integrity Fix, and latest HMA-OSS.
-    return "1.4.15"
+    // Consistent manager daemon payload naming across build and runtime paths.
+    return "1.4.16"
 }
 
 subprojects {

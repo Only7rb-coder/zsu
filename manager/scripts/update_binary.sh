@@ -17,9 +17,9 @@ if [ ! "$ARCH" = "arm64-v8a" ]; then
 fi
 
 # Extract ksud
-unzip -o "$3" "lib/$ARCH/libksud.so" -d $TMPDIR >&2
+unzip -o "$3" "lib/$ARCH/libzsu.so" -d $TMPDIR >&2
 
-KSUD="$TMPDIR/lib/$ARCH/libksud.so"
+KSUD="$TMPDIR/lib/$ARCH/libzsu.so"
 
 chmod 755 "$KSUD"
 
