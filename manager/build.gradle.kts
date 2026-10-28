@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Addon bundle refresh: BreZygisk, TEESimulator, Play Integrity Fix, and latest HMA-OSS.
-    return "1.4.15"
+    // KernelSU-Next SELinux status-hook cleanup and upstream compatibility refresh.
+    return "1.4.16"
 }
 
 subprojects {
