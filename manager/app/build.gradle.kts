@@ -29,7 +29,8 @@ android {
 
     defaultConfig {
         // zsu private fork: unique app identity (GUI/code stays identical)
-        applicationId = "com.zsu.zsu"
+        // Changed from com.zsu.zsu to avoid public blacklist detection
+        applicationId = "io.github.only7rb.zsu"
     }
 
     buildTypes {
