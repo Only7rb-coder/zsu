@@ -11,7 +11,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-PACKAGE = "com.zsu.zsu"
+PACKAGE = "io.github.only7rb.zsu"
 TABS = ["Home", "Manage", "BL Root", "Settings"]
 
 
