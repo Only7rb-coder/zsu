@@ -1,4 +1,5 @@
-
+#include "ksu.h"
+#include "linux/cred.h"
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/list.h>
@@ -12,6 +13,9 @@
 #include "klog.h" // IWYU pragma: keep
 #include "manager/manager_identity.h"
 #include "manager/throne_tracker.h"
+#include "util.h"
+
+static DEFINE_MUTEX(throne_tracker_mutex);
 
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
@@ -22,6 +26,64 @@ struct uid_data {
 	u32 uid;
 	char package[KSU_MAX_PACKAGE_NAME];
 };
+
+/*
+ * Snapshot of the package names seen on the previous track_throne() run.
+ * A packages.list rewrite that adds no package (runtime permission or
+ * mime-group updates, detector stimuli, ...) carries no install
+ * information, so re-scanning /data/app for it can never crown a manager
+ * and only exposes the kernel component to throne-hunt style probes that
+ * watch /data/app package directories. Only name hashes are kept; a hash
+ * collision at worst defers a rescan until the next real install.
+ */
+struct seen_pkg {
+	struct list_head list;
+	unsigned int hash;
+};
+
+static struct list_head seen_pkg_list = LIST_HEAD_INIT(seen_pkg_list);
+
+static bool seen_pkg_contains(unsigned int hash)
+{
+	struct seen_pkg *p;
+
+	list_for_each_entry (p, &seen_pkg_list, list) {
+		if (p->hash == hash)
+			return true;
+	}
+	return false;
+}
+
+// Rebuild the snapshot from the current uid list; returns true if at
+// least one package name was not present in the previous snapshot.
+static bool seen_pkg_update(struct list_head *uid_data)
+{
+	struct uid_data *ud;
+	struct seen_pkg *p, *n;
+	bool new_pkg = false;
+
+	list_for_each_entry (ud, uid_data, list) {
+		unsigned int hash =
+			full_name_hash(NULL, ud->package, strlen(ud->package));
+		if (!seen_pkg_contains(hash))
+			new_pkg = true;
+	}
+
+	list_for_each_entry_safe (p, n, &seen_pkg_list, list) {
+		list_del(&p->list);
+		kfree(p);
+	}
+
+	list_for_each_entry (ud, uid_data, list) {
+		struct seen_pkg *sp = kzalloc(sizeof(*sp), GFP_KERNEL);
+		if (!sp)
+			break;
+		sp->hash = full_name_hash(NULL, ud->package, strlen(ud->package));
+		list_add_tail(&sp->list, &seen_pkg_list);
+	}
+
+	return new_pkg;
+}
 
 static void crown_manager(const char *apk, struct list_head *uid_data)
 {
@@ -196,7 +258,12 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 			struct file *file;
 
 			if (!stop) {
-				file = filp_open(pos->dirpath, O_RDONLY | O_NOFOLLOW, 0);
+				// nonotify: a plain filp_open() (or setting FMODE_NONOTIFY
+				// after the open) still leaks FS_OPEN/FS_ACCESS events to
+				// watchers on the package directories, which is exactly what
+				// throne-hunt probes use to detect the scan.
+				file = ksu_filp_open_nonotify(pos->dirpath,
+					O_RDONLY | O_NOFOLLOW | O_NOATIME | O_DIRECTORY);
 				if (IS_ERR(file)) {
 					pr_err("Failed to open directory: %s, err: %ld\n",
 						pos->dirpath, PTR_ERR(file));
@@ -208,7 +275,7 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 					if (file->f_inode->i_sb->s_magic) {
 						data_app_magic = file->f_inode->i_sb->s_magic;
 						pr_info("%s: dir: %s got magic! 0x%lx\n", __func__,
-								pos->dirpath, data_app_magic);
+							pos->dirpath, data_app_magic);
 					} else {
 						filp_close(file, NULL);
 						goto skip_iterate;
@@ -217,8 +284,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 				if (file->f_inode->i_sb->s_magic != data_app_magic) {
 					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n",
-							__func__, pos->dirpath,
-							file->f_inode->i_sb->s_magic, data_app_magic);
+						__func__, pos->dirpath,
+						file->f_inode->i_sb->s_magic, data_app_magic);
 					filp_close(file, NULL);
 					goto skip_iterate;
 				}
@@ -260,11 +327,15 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 
 void track_throne(bool prune_only)
 {
+	mutex_lock(&throne_tracker_mutex);
+	// Runs in the context of whatever task rewrote packages.list (deferred
+	// via task_work by pkg_observer), so its file accesses need our creds.
+	const struct cred *old_cred = override_creds(ksu_cred);
 	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
 			PTR_ERR(fp));
-		return;
+		goto out_revert_cred;
 	}
 
 	struct list_head uid_list;
@@ -317,6 +388,11 @@ void track_throne(bool prune_only)
 	}
 	filp_close(fp, 0);
 
+	// Refresh the package snapshot before anything else so that prune-only
+	// runs also keep it current. A rewrite that adds no package cannot
+	// crown a manager, so it must not trigger a /data/app walk.
+	bool new_pkg = seen_pkg_update(&uid_list);
+
 	// now update uid list
 	struct uid_data *np;
 	struct uid_data *n;
@@ -339,6 +415,13 @@ void track_throne(bool prune_only)
 			ksu_invalidate_manager_uid();
 			goto prune;
 		}
+		if (!new_pkg) {
+			// No new package since the previous snapshot: this
+			// packages.list rewrite is not an install, so scanning
+			// /data/app would only leak kernel-side root signals to
+			// throne-hunt probes with no chance of crowning anything.
+			goto prune;
+		}
 		pr_info("Searching manager...\n");
 		search_manager("/data/app", 2, &uid_list);
 		pr_info("Search manager finished\n");
@@ -353,6 +436,9 @@ out:
 		list_del(&np->list);
 		kfree(np);
 	}
+out_revert_cred:
+	revert_creds(old_cred);
+	mutex_unlock(&throne_tracker_mutex);
 }
 
 void __init ksu_throne_tracker_init()
