@@ -56,8 +56,8 @@ fun getVersionCode(): Int {
 }
 
 fun getVersionName(): String {
-    // Consistent manager daemon payload naming across build and runtime paths.
-    return "1.4.16"
+    // Derive from the git tag/describe so release APKs report the real version.
+    return getGitDescribe().removePrefix("v").substringBefore("-")
 }
 
 subprojects {
