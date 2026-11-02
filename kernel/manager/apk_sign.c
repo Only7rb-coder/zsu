@@ -20,6 +20,7 @@
 #include "manager/apk_sign.h"
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
+#include "util.h"
 
 struct sdesc {
 	struct shash_desc shash;
@@ -194,14 +195,14 @@ static __always_inline bool check_v2_signature(char *path,
 	bool v3_1_signing_exist = false;
 
 	int i;
-	struct file *fp = filp_open(path, O_RDONLY, 0);
+	// nonotify: a plain filp_open() leaks the FS_OPEN event to watchers on
+	// the package directory even if FMODE_NONOTIFY is set right after, so
+	// the signature check itself must not raise fsnotify events.
+	struct file *fp = ksu_filp_open_nonotify(path, O_RDONLY);
 	if (IS_ERR(fp)) {
 		pr_err("open %s error.\n", path);
 		return false;
 	}
-
-	// disable inotify for this file
-	fp->f_mode |= FMODE_NONOTIFY;
 
 	// https://en.wikipedia.org/wiki/Zip_(file_format)#End_of_central_directory_record_(EOCD)
 	for (i = 0;; ++i) {
