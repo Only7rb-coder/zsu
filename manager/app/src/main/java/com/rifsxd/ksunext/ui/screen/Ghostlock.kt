@@ -143,11 +143,17 @@ private object BlRootOperationStore {
 @Composable
 fun GhostlockScreen() {
     val context = LocalContext.current
-    val kernelRelease = GhostlockKernelRelease.current()
+    // uname() and the profile lookup below must not re-run on every
+    // recomposition: while a run is active the status line updates once per
+    // second, which would re-read and re-parse the asset JSON on the main
+    // thread each tick.
+    val kernelRelease = remember { GhostlockKernelRelease.current() }
     val deviceName = remember { resolveDeviceName() }
     val socName = remember { resolveSocName() }
     val abiSupported = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
-    val kernelSupported = GhostlockRunner.isKernelSupported(context, kernelRelease)
+    val kernelSupported = remember(kernelRelease) {
+        GhostlockRunner.isKernelSupported(context, kernelRelease)
+    }
     val cpuOptions = remember(kernelRelease) { GhostlockCpuPairCatalog.options(kernelRelease) }
     var selectedCpuPairIndex by rememberSaveable {
         mutableIntStateOf(

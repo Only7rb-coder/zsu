@@ -17,15 +17,24 @@ class GhostlockAutoJobService : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         if (!GhostlockAutoMode.isEnabled(this)) return false
         val supportedAbi = Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
-        val supportedKernel = GhostlockRunner.isKernelSupported(
-            this,
-            GhostlockKernelRelease.current()
-        )
-        if (!supportedAbi || !supportedKernel) return false
+        if (!supportedAbi) return false
         if (activeRun?.isActive == true) return false
         if (!GhostlockAutoMode.claimAttempt(this)) return false
         activeRun = jobScope.launch {
             try {
+                // Asset I/O for the profile lookup belongs off the main thread;
+                // onStartJob runs on it.
+                val supportedKernel = GhostlockRunner.isKernelSupported(
+                    applicationContext,
+                    GhostlockKernelRelease.current()
+                )
+                if (!supportedKernel) {
+                    /* No profile for this kernel: nothing ran, so the attempt
+                     * is simply consumed without disabling Auto mode. */
+                    GhostlockAutoMode.clearAttempt(applicationContext)
+                    jobFinished(params, false)
+                    return@launch
+                }
                 val result = runCatching { GhostlockRunner.run(applicationContext) }
                     .getOrNull()
                 jobFinished(params, false)
