@@ -1,39 +1,33 @@
-# GhostLock profile synchronization
+# GhostLock upstream synchronization
 
-## Source and scope
+## Pinned source
 
-The active catalog is synchronized from `YuKongA/ghostlock-app` at the current `pre-release` profile set through commit `72387d5`, using `docs/kernel_profiles/SUPPORTED_DEVICES.md` and the profile HOCON assets as the source of device/kernel associations.
+ZSU synchronizes `YuKongA/ghostlock-app` at commit `f44fa12a8f21340f2c31840c00d05baef69cc4f7`.
 
-Eight verified profiles were added to the ZSU JSON catalog:
+The native C++23 engine, JVM profile-core sources, Rust extractor, disassembly comparator, and HOCON catalog are covered by `upstream-sync.json`. Verify them with:
 
-- Sharp AQUOS R8 SH-R80 — `5.15.178-android13-8-00025-g7feb0b0b7cd8-ab14134651`
-- ASUS Zenfone 10 — `5.15.206-android13-8-00056-g3f87b8704e9e-ab15683575`
-- BOOX Onyx NoteAir6C — `6.1.134-android14-11-maybe-dirty`
-- Redmi Note 14 Pro 5G / POCO X7 — `6.1.138-android14-11-g51f8c580613d-ab13911623`
-- Nothing Phone (3a) Pro — `6.1.157-android14-11-g82d681c9b06b-ab14634535`
-- MEIZU 21 — `6.1.25-android14-11-maybe-dirty`
-- TECNO POVA 7 / LJ6 — `6.12.38-android16-5-gb575a0b6e647-ab14355190-4k`
-- vivo X200 Pro — `6.6.30-android15-8-g24ffe62b0a0e-abogki387229724-4k`
+```bash
+python manager/ghostlock/tools/verify_upstream_sync.py \
+  --source <path-to-pinned-upstream-checkout> --root .
+```
 
-The native JSON loader consumes ZSU's legacy flat-field format. The upstream HOCON groups were mapped to that format, including route geometry, physical address overrides, and the TCP/select fallback waiter shift. ZSU's shared execution defaults remain authoritative unless a profile explicitly overrides a value.
+The catalog contains 79 non-template, exact-`uname -r` profiles: 69 direct recommendations and 10 Shizuku recommendations. It also contains four templates and shared/index documents, for 89 packaged `.conf` files. Templates never match a device. No previously bundled ZSU profile is removed.
 
-ZSU's native address-space conversion carries the optional `kernel_phys_offset` from a profile. Existing profiles omit it and continue to use the old target constant; the imported MTK and Qualcomm profiles retain their measured physical bases.
+## Runtime contract
 
-Profiles may omit the `execution` object because ZSU supplies shared execution defaults. Availability checks must resolve and validate the merged profile, not validate the raw JSON object.
+- The old flat JSON profile, `defaults.json`, `--profile`, `GHOSTLOCK_CORE`, and `GHOSTLOCK_CONSUMER_CORE` launch contract is removed from the active path.
+- Built-in and explicitly selected imported HOCON documents merge through the pinned profile core and encode as GLK1 magic `0x0D000721`, version 2.
+- Native execution uses `--ghostlock-app-call --enable-status-record` and a four-byte big-endian frame on stdin. Stdin remains open for status acknowledgements.
+- Direct execution requires ZSU's own packaged `libksud.so`; it never falls back to another manager. Shizuku uses an explicit manager choice first, then ZSU and the remaining known managers.
+- Direct, Shizuku, and automatic operations are serialized in the app process. A native attempt is never automatically retried.
+- Auto Ghostlock remains opt-in, one-shot per full boot, soft-reboot aware, and disabled after failure.
 
-## Deliberate exclusions
+## Device status
 
-- `5.15.189-android13-8-00004-g1c3825f8ac0a-ab14110541` (Sony Xperia 1 V SOG10) remains excluded because its source profile explicitly says the full device gate is pending.
-- The MEIZU 21 profile is now enabled because the current upstream profile supplies the compact waiter route geometry required by the legacy ZSU C path.
+The Sony Xperia 1 V SOG10 profile `5.15.189-android13-8-00004-g1c3825f8ac0a-ab14110541` is bundled exactly as upstream, but its full device gate remains pending. Bundling a profile is not a claim that it is device-verified.
 
-## Route hang protection
+All direct, Shizuku, and profile-specific device gates remain pending without physical-device evidence. See `VERIFICATION.md` for actual host results and unavailable toolchains.
 
-The native PI-race coordinator now enforces `execution.race.route_done_timeout_ms` using `CLOCK_MONOTONIC`. If a kernel route fails to signal completion before the profile deadline, the native process fail-stops instead of waiting indefinitely for the manager's outer watchdog. The default is 30 seconds because the route-specific waits are sub-second to a few seconds; profiles can override it when a device-specific route window is known.
+## Licensing
 
-The Red Magic 11 Pro / Tablet 5 Pro profile (`6.12.23-android16-5-gf1bdb13583da-ab13761046-4k`) now limits heap-page preparation to two attempts and 180 seconds. This avoids stacking four full sprays on devices where one attempt already takes roughly 100 seconds. All heap helper PID sets are now reaped centrally on every cleanup path, and the Android runner reports exit 137 as an explicit SIGKILL/resource-pressure failure instead of a generic exit code.
-
-## Verification status
-
-- `make -C manager/ghostlock address-space-host-test profile-catalog-host-test` checks physical-base translation, index uniqueness and file/release consistency, required profile fields, and every fully resolved profile through the native JSON loader.
-- The catalog validator resolves profiles without an `execution` object against shared defaults before native loading.
-- Host checks are necessary but not a substitute for an Android build and a real-device gate for each newly enabled profile. No Android SDK or attached device was available in the sandbox during this work. Do not treat this branch as device-validated solely because host checks pass.
+`LICENSE-APACHE-2.0` is retained unchanged with SHA-256 `1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6`.

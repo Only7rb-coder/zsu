@@ -149,10 +149,17 @@ val ghostlockClang34 = ghostlockNdkBin?.resolve(
     if (ghostlockIsWindows) "aarch64-linux-android34-clang.cmd" else "aarch64-linux-android34-clang",
 )
 val ghostlockLlvmAr = ghostlockNdkBin?.resolve(if (ghostlockIsWindows) "llvm-ar.exe" else "llvm-ar")
+val ghostlockLlvmStrip = ghostlockNdkBin?.resolve(
+    if (ghostlockIsWindows) "llvm-strip.exe" else "llvm-strip",
+)
 
 tasks.register<Exec>("buildGhostlockNative") {
     workingDir(ghostlockDir)
     commandLine("make", "ghostlock", "API=35")
+    ghostlockNdkDir?.let {
+        environment("ANDROID_NDK_HOME", it.absolutePath)
+        environment("NDK_ROOT", it.absolutePath)
+    }
     inputs.files(fileTree(ghostlockDir) {
         include("Makefile")
         include("src/Makefile")
@@ -170,6 +177,17 @@ tasks.register<Copy>("packageGhostlockNative") {
     from(ghostlockBinary)
     into(layout.buildDirectory.dir("generated/ghostlock-jni/arm64-v8a"))
     rename { "libghostlock.so" }
+    doLast {
+        val strip = ghostlockLlvmStrip ?: throw GradleException("NDK llvm-strip is unavailable")
+        val packaged = layout.buildDirectory.file(
+            "generated/ghostlock-jni/arm64-v8a/libghostlock.so",
+        ).get().asFile
+        val exitCode = ProcessBuilder(strip.absolutePath, "--strip-all", packaged.absolutePath)
+            .inheritIO()
+            .start()
+            .waitFor()
+        check(exitCode == 0) { "llvm-strip failed with $exitCode" }
+    }
 }
 
 tasks.register<Exec>("buildGhostlockExtract") {
