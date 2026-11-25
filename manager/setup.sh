@@ -1,30 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
 
-> gradle.properties
+: "${MY_KEYSTORE_PASSWORD:?Set MY_KEYSTORE_PASSWORD}"
+: "${MY_KEY_ALIAS:?Set MY_KEY_ALIAS}"
+: "${MY_KEY_PASSWORD:?Set MY_KEY_PASSWORD}"
+test -f key.jks
 
-{
-    echo 'android.experimental.enableNewResourceShrinker.preciseShrinking=true'
-    echo 'android.enableAppCompileTimeRClass=true'
-    echo 'android.useAndroidX=true'
-    echo KEYSTORE_PASSWORD=$MY_KEYSTORE_PASSWORD
-    echo KEY_ALIAS=$MY_KEY_ALIAS
-    echo KEY_PASSWORD=$MY_KEY_PASSWORD
-    echo KEYSTORE_FILE='key.jks'
-    echo 'org.gradle.parallel=true'
-    echo 'org.gradle.vfs.watch=true'
-    echo 'org.gradle.jvmargs=-Xmx2048m'
-    echo 'android.r8.maxWorkers=4'
-} >> gradle.properties
+# Pass signing settings directly to Gradle without rewriting the user's
+# gradle.properties or printing secret values.
+export ORGANIZATION_GRADLE_PROJECT_KEYSTORE_FILE="key.jks"
+export ORGANIZATION_GRADLE_PROJECT_KEYSTORE_PASSWORD="$MY_KEYSTORE_PASSWORD"
+export ORGANIZATION_GRADLE_PROJECT_KEY_ALIAS="$MY_KEY_ALIAS"
+export ORGANIZATION_GRADLE_PROJECT_KEY_PASSWORD="$MY_KEY_PASSWORD"
 
 ./gradlew clean assembleRelease
-
-> gradle.properties
-
-{
-    echo 'android.experimental.enableNewResourceShrinker.preciseShrinking=true'
-    echo 'android.enableAppCompileTimeRClass=true'
-    echo 'android.useAndroidX=true'
-    echo 'org.gradle.jvmargs=-Xmx2048m'
-    echo 'org.gradle.parallel=true'
-    echo 'org.gradle.vfs.watch=true'
-    echo 'android.r8.maxWorkers=4'
-} >> gradle.properties

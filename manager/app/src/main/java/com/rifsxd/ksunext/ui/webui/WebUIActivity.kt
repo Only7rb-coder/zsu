@@ -42,7 +42,7 @@ import java.util.Locale
 class WebUIActivity : ComponentActivity() {
 
     private lateinit var webviewInterface: WebViewInterface
-    private val rootShell by lazy { createRootShell(true) }
+    private val rootShell = lazy { createRootShell(true) }
     private var webView: WebView? = null
     private lateinit var container: FrameLayout
     private lateinit var insets: Insets
@@ -155,7 +155,7 @@ class WebUIActivity : ComponentActivity() {
                 SuFilePathHandler(
                     this,
                     webRoot,
-                    rootShell,
+                    rootShell.value,
                     { insets },
                     { enable -> enableInsets(enable) }
                 )
@@ -195,10 +195,8 @@ class WebUIActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
 
-            addJavascriptInterface(
-                WebViewInterface(this@WebUIActivity, this, moduleDir),
-                "ksu"
-            )
+            webviewInterface = WebViewInterface(this@WebUIActivity, this, moduleDir)
+            addJavascriptInterface(webviewInterface, "ksu")
 
             webChromeClient = object : WebChromeClient() {
 
@@ -419,10 +417,11 @@ class WebUIActivity : ComponentActivity() {
             destroy()
         }
         webView = null
-        runCatching {
-            webviewInterface.destroy()
-            webView?.destroy()
-            rootShell?.close()
+        if (::webviewInterface.isInitialized) {
+            runCatching { webviewInterface.destroy() }
+        }
+        if (rootShell.isInitialized()) {
+            runCatching { rootShell.value.close() }
         }
         super.onDestroy()
     }

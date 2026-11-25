@@ -2,7 +2,7 @@ name: Build Manager CI
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "main", "dev" ]
     paths:
       - '.github/workflows/build-manager.yml'
       - '.github/workflows/build-lkm.yml'
@@ -10,8 +10,9 @@ on:
       - 'manager/**'
       - 'kernel/**'
       - 'userspace/**'
+      - 'scripts/**'
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "main", "dev" ]
     paths:
       - '.github/workflows/build-manager.yml'
       - '.github/workflows/build-lkm.yml'
@@ -19,6 +20,7 @@ on:
       - 'manager/**'
       - 'kernel/**'
       - 'userspace/**'
+      - 'scripts/**'
   workflow_call:
   workflow_dispatch:
 
@@ -80,6 +82,9 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Run engineering regression tests
+        run: python3 ../scripts/test_engineering_regressions.py
 
       - name: Run GhostLock host regression tests
         run: make -C ghostlock address-space-host-test profile-catalog-host-test

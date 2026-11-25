@@ -46,7 +46,7 @@ fn print_usage(program: &str, opts: &Options) {
     print!("{}", opts.usage(&brief));
 }
 
-fn set_identity(uid: u32, gid: u32, groups: &[u32]) {
+fn set_identity(uid: u32, gid: u32, groups: &[u32]) -> Result<()> {
     rustix::thread::set_thread_groups(
         groups
             .iter()
@@ -54,11 +54,24 @@ fn set_identity(uid: u32, gid: u32, groups: &[u32]) {
             .collect::<Vec<_>>()
             .as_ref(),
     )
-    .ok();
+    .with_context(|| format!("setgroups {groups:?}"))?;
     let gid = Gid::from_raw(gid);
     let uid = Uid::from_raw(uid);
-    set_thread_res_gid(gid, gid, gid).ok();
-    set_thread_res_uid(uid, uid, uid).ok();
+    set_thread_res_gid(gid, gid, gid).with_context(|| format!("setresgid {gid}"))?;
+    set_thread_res_uid(uid, uid, uid).with_context(|| format!("setresuid {uid}"))?;
+    Ok(())
+}
+
+fn resolve_uid(user: &str) -> Result<u32> {
+    let c_user = CString::new(user).with_context(|| format!("Invalid user: {user}"))?;
+    let pw = unsafe { libc::getpwnam(c_user.as_ptr()).as_ref() };
+
+    if let Some(pw) = pw {
+        return Ok(pw.pw_uid);
+    }
+
+    user.parse::<u32>()
+        .map_err(|_| anyhow::anyhow!("Unknown user: {user}"))
 }
 
 fn wrap_tty(fd: c_int) {
@@ -244,18 +257,13 @@ pub fn root_shell() -> Result<()> {
         free_idx += 1;
     }
 
-    // use current uid if no user specified, these has been done in kernel!
-    let mut uid = getuid().as_raw();
-    if free_idx < matches.free.len() {
-        let name = &matches.free[free_idx];
-        uid = unsafe {
-            let pw = CString::new(name.as_str())
-                .ok()
-                .and_then(|c_name| libc::getpwnam(c_name.as_ptr()).as_ref());
-
-            pw.map_or_else(|| name.parse::<u32>().unwrap_or(0), |pw| pw.pw_uid)
-        }
-    }
+    // Use the current UID when no user is specified. Never silently fall back
+    // to root when a requested user does not exist.
+    let uid = if free_idx < matches.free.len() {
+        resolve_uid(&matches.free[free_idx])?
+    } else {
+        getuid().as_raw()
+    };
 
     // if there is no gid provided, use uid.
     let gid = gid.unwrap_or(uid);
@@ -317,7 +325,7 @@ pub fn root_shell() -> Result<()> {
                 wrap_tty(2);
             }
 
-            set_identity(uid, gid, &groups);
+            set_identity(uid, gid, &groups)?;
 
             Result::Ok(())
         })

@@ -37,14 +37,25 @@ val androidTargetCompatibility = JavaVersion.VERSION_21
 val managerVersionCode by extra(getVersionCode())
 val managerVersionName by extra(getVersionName())
 
+private fun runGit(vararg args: String): String {
+    val process = ProcessBuilder(listOf("git", *args))
+        .directory(rootDir)
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+    val exitCode = process.waitFor()
+    check(exitCode == 0) {
+        "git ${args.joinToString(" ")} failed with exit code ${process.exitValue()}: $output"
+    }
+    return output
+}
+
 fun getGitCommitCount(): Int {
-    val process = Runtime.getRuntime().exec(arrayOf("git", "rev-list", "--count", "HEAD"))
-    return process.inputStream.bufferedReader().use { it.readText().trim().toInt() }
+    return runGit("rev-list", "--count", "HEAD").toInt()
 }
 
 fun getGitDescribe(): String {
-    val process = Runtime.getRuntime().exec(arrayOf("git", "describe", "--tags", "--always"))
-    return process.inputStream.bufferedReader().use { it.readText().trim() }
+    return runGit("describe", "--tags", "--always")
 }
 
 fun getVersionCode(): Int {

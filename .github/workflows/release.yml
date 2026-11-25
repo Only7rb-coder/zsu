@@ -35,6 +35,9 @@ jobs:
       RELEASE_NAME_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || '' }}
       RELEASE_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v5
+
       - name: Download artifacts
         uses: actions/download-artifact@v7
       - name: Rename ksud
@@ -141,6 +144,15 @@ jobs:
           fi
           echo "Collected $ASSET_COUNT release assets"
 
+      - name: Generate and verify SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs -r sha256sum > SHA256SUMS
+          test -s SHA256SUMS
+          sha256sum -c SHA256SUMS
+
       - name: Display structure of downloaded files
         run: ls -R
 
@@ -151,6 +163,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ env.RELEASE_TITLE }}
           prerelease: ${{ env.RELEASE_PRERELEASE }}
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: release-assets/*

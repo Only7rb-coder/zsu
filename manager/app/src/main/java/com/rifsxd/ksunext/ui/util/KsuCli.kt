@@ -38,6 +38,9 @@ private fun getKsuDaemonPath(): String {
     return getKsuDaemonFile().absolutePath
 }
 
+// Preserve one argument when interpolating untrusted values into a shell command.
+private fun String.shellQuote(): String = "'" + replace("'", "'\\''") + "'"
+
 data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
     constructor(result: Shell.Result, showReboot: Boolean) : this(result.code, result.err.joinToString("\n"), showReboot)
     constructor(result: Shell.Result) : this(result, result.isSuccess)
@@ -140,9 +143,9 @@ fun getSuperuserCount(): Int {
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
     val cmd = if (enable) {
-        "module enable $id"
+        "module enable ${id.shellQuote()}"
     } else {
-        "module disable $id"
+        "module disable ${id.shellQuote()}"
     }
     val result = execKsud(cmd, true)
     Log.i(TAG, "$cmd result: $result")
@@ -150,14 +153,14 @@ fun toggleModule(id: String, enable: Boolean): Boolean {
 }
 
 fun uninstallModule(id: String): Boolean {
-    val cmd = "module uninstall $id"
+    val cmd = "module uninstall ${id.shellQuote()}"
     val result = execKsud(cmd, true)
     Log.i(TAG, "uninstall module $id result: $result")
     return result
 }
 
 fun restoreModule(id: String): Boolean {
-    val cmd = "module restore $id"
+    val cmd = "module restore ${id.shellQuote()}"
     val result = execKsud(cmd, true)
     Log.i(TAG, "restore module $id result: $result")
     return result
@@ -256,26 +259,23 @@ fun flashModule(
     onStderr: (String) -> Unit
 ): FlashResult {
     val resolver = ksuApp.contentResolver
-    with(resolver.openInputStream(uri)) {
-        val file = File(ksuApp.cacheDir, "module.zip")
-        file.outputStream().use { output ->
-            this?.copyTo(output)
+    val file = File.createTempFile("module-", ".zip", ksuApp.cacheDir)
+    try {
+        requireNotNull(resolver.openInputStream(uri)) { "Cannot open module URI: $uri" }.use { input ->
+            file.outputStream().use { output -> input.copyTo(output) }
         }
-        val cmd = "module install ${file.absolutePath}"
+        val cmd = "module install ${file.absolutePath.shellQuote()}"
         val result = flashWithIO("${getKsuDaemonPath()} $cmd", onStdout, onStderr)
         Log.i("KernelSU", "install module $uri result: $result")
-
-        file.delete()
-
         return FlashResult(result)
+    } finally {
+        file.delete()
     }
 }
 
 fun runModuleAction(
     moduleId: String, onStdout: (String) -> Unit, onStderr: (String) -> Unit
-): Boolean {
-    val shell = createRootShell(true)
-
+): Boolean = withNewRootShell(true) {
     val stdoutCallback: CallbackList<String?> = object : CallbackList<String?>() {
         override fun onAddElement(s: String?) {
             onStdout(s ?: "")
@@ -288,11 +288,12 @@ fun runModuleAction(
         }
     }
 
-    val result = shell.newJob().add("${getKsuDaemonPath()} module action $moduleId")
+    val result = newJob()
+        .add("${getKsuDaemonPath()} module action ${moduleId.shellQuote()}")
         .to(stdoutCallback, stderrCallback).exec()
     Log.i("KernelSU", "Module runAction result: $result")
 
-    return result.isSuccess
+    result.isSuccess
 }
 
 fun restoreBoot(
@@ -580,21 +581,21 @@ fun isSepolicyValid(rules: String?): Boolean {
         return true
     }
     val result =
-        Shell.cmd("${getKsuDaemonPath()} sepolicy check '$rules'").to(ArrayList(), null)
+        Shell.cmd("${getKsuDaemonPath()} sepolicy check ${rules.shellQuote()}").to(ArrayList(), null)
             .exec()
     return result.isSuccess
 }
 
 fun getSepolicy(pkg: String): String {
     val result =
-        Shell.cmd("${getKsuDaemonPath()} profile get-sepolicy $pkg").to(ArrayList(), null)
+        Shell.cmd("${getKsuDaemonPath()} profile get-sepolicy ${pkg.shellQuote()}").to(ArrayList(), null)
             .exec()
     Log.i(TAG, "code: ${result.code}, out: ${result.out}, err: ${result.err}")
     return result.out.joinToString("\n")
 }
 
 fun setSepolicy(pkg: String, rules: String): Boolean {
-    val result = Shell.cmd("${getKsuDaemonPath()} profile set-sepolicy $pkg '$rules'")
+    val result = Shell.cmd("${getKsuDaemonPath()} profile set-sepolicy ${pkg.shellQuote()} ${rules.shellQuote()}")
         .to(ArrayList(), null).exec()
     Log.i(TAG, "set sepolicy result: ${result.code}")
     return result.isSuccess
@@ -606,7 +607,7 @@ fun listAppProfileTemplates(): List<String> {
 }
 
 fun getAppProfileTemplate(id: String): String {
-    return Shell.cmd("${getKsuDaemonPath()} profile get-template '${id}'")
+    return Shell.cmd("${getKsuDaemonPath()} profile get-template ${id.shellQuote()}")
         .to(ArrayList(), null).exec().out.joinToString("\n")
 }
 
@@ -688,25 +689,24 @@ fun getMetaModule(): String {
 }
 
 fun setAppProfileTemplate(id: String, template: String): Boolean {
-    val escapedTemplate = template.replace("'", "'\\''")
-    val cmd = """${getKsuDaemonPath()} profile set-template "$id" '$escapedTemplate'"""
+    val cmd = "${getKsuDaemonPath()} profile set-template ${id.shellQuote()} ${template.shellQuote()}"
     return Shell.cmd(cmd)
         .to(ArrayList(), null).exec().isSuccess
 }
 
 fun deleteAppProfileTemplate(id: String): Boolean {
-    return Shell.cmd("${getKsuDaemonPath()} profile delete-template '${id}'")
+    return Shell.cmd("${getKsuDaemonPath()} profile delete-template ${id.shellQuote()}")
         .to(ArrayList(), null).exec().isSuccess
 }
 
 fun forceStopApp(packageName: String) {
-    val result = Shell.cmd("am force-stop $packageName").exec()
+    val result = Shell.cmd("am force-stop ${packageName.shellQuote()}").exec()
     Log.i(TAG, "force stop $packageName result: $result")
 }
 
 fun launchApp(packageName: String) {
     val result =
-        Shell.cmd("cmd package resolve-activity --brief $packageName | tail -n 1 | xargs cmd activity start-activity -n")
+        Shell.cmd("cmd package resolve-activity --brief ${packageName.shellQuote()} | tail -n 1 | xargs cmd activity start-activity -n")
             .exec()
     Log.i(TAG, "launch $packageName result: $result")
 }
