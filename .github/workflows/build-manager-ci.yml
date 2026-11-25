@@ -107,6 +107,9 @@ jobs:
             echo ${{ secrets.KEYSTORE }} | base64 -d > key.jks
           fi
 
+      - name: Setup GhostLock Rust target
+        run: rustup target add aarch64-linux-android
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:

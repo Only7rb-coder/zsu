@@ -1,23 +1,18 @@
-# ZSU v1.5.4
+# ZSU v1.5.5
 
-## Security and reliability
+## GhostLock upstream synchronization
 
-- Reject unknown `su` users instead of silently falling back to UID 0.
-- Propagate supplementary-group, GID, and UID change failures before executing a shell.
-- Quote module IDs, package names, SEPolicy rules, and profile-template data passed through shell commands.
-- Use unique module-install temporary files and clean them up even when installation fails.
-- Close module-action and WebUI root shells reliably without creating a shell during early WebUI teardown.
-- Remove committed signing configuration and the tracked keystore; ignore local signing material.
+- Synchronize GhostLock with upstream `YuKongA/ghostlock-app` commit `f44fa12a8f21340f2c31840c00d05baef69cc4f7`.
+- Include the complete catalog of 79 exact-release device profiles and preserve the GLK1 v2 profile contract.
+- Support GhostLock through direct root execution and Shizuku, with the upstream native engine packaged for Android arm64.
+- Support profile import and OTA payload extraction while rejecting malformed imports, invalid geometry, and incomplete profile data instead of applying unsafe partial state.
+- Preserve the existing Auto Ghostlock behavior and ZSU integration.
 
-## Build and release engineering
+## Build and verification
 
-- Preserve local Gradle configuration and pass signing values through environment-based project properties.
-- Make Git-based version discovery wait for and validate Git subprocess results.
-- Run host regression contracts in Manager CI, including the `main` branch.
-- Make local builds fail fast and install the correctly named ZSU release APK.
-- Correct the navigation smoke test to use ZSU's real application ID.
-- Publish and verify `SHA256SUMS` with release assets.
+- Install the required `aarch64-linux-android` Rust target in both Manager build workflows.
+- Verify 258 pinned upstream files and all 79 device profiles against the recorded upstream revision.
+- Pass 13 engineering regression tests, 45 Android/JVM unit tests, native packaging, profile export, and native static analysis checks.
+- Build the release APKs and kernel artifacts through the GitHub Actions release workflow and publish verified SHA-256 checksums.
 
-## Verification
-
-The host regression suite covers the security, cleanup, build, CI, and release contracts above. Android and kernel artifacts are built by the GitHub Actions release workflow; refer to the associated workflow run for the build record.
+Direct-root, Shizuku, and SOG10 behavior still requires testing on physical devices; successful builds and host tests do not establish on-device compatibility.

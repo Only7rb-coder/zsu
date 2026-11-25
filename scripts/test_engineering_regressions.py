@@ -123,6 +123,12 @@ class EngineeringRegressionTests(unittest.TestCase):
         workflow = read(".github/workflows/build-manager-ci.yml")
         self.assertRegex(workflow, r'branches:\s*\[[^\]]*"main"')
 
+    def test_manager_builds_install_ghostlock_rust_target(self) -> None:
+        for workflow_name in ("build-manager.yml", "build-manager-ci.yml"):
+            with self.subTest(workflow=workflow_name):
+                workflow = read(f".github/workflows/{workflow_name}")
+                self.assertIn("rustup target add aarch64-linux-android", workflow)
+
     def test_release_publishes_and_verifies_sha256_checksums(self) -> None:
         workflow = read(".github/workflows/release.yml")
         self.assertIn("SHA256SUMS", workflow)
