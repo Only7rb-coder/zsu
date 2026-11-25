@@ -3,20 +3,12 @@ package com.rifsxd.ksunext.ghostlock
 import android.content.Context
 import com.rifsxd.ksunext.ui.util.getKsuDaemonFile
 import java.io.File
-import java.io.IOException
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
 
-/** Runs the manager-bundled GhostLock payload using the upstream JSON profile contract. */
+/** Runs the manager-bundled GhostLock payload using the upstream GLK1 contract. */
 object GhostlockRunner {
-    private const val BINARY_NAME = "libghostlock.so"
-    private const val WORK_DIR_NAME = "ghostlock"
-    private const val LOG_NAME = ".ghostlock_ksu.log"
-    private const val RESULT_LOG_NAME = "last-run.log"
-    private const val PROFILE_NAME = "active-profile.json"
-    // Profiles allow heap preparation to run for up to 240 seconds. Keep the
-    // outer watchdog longer so it cannot stop a valid slow run prematurely.
-    private const val TIMEOUT_SECONDS = 300L
+    private const val BinaryName = "libghostlock.so"
+    private const val WorkDirectoryName = "ghostlock"
+    private const val ResultLogName = "last-run.log"
 
     data class Result(val success: Boolean, val timedOut: Boolean, val output: String)
 
@@ -24,110 +16,53 @@ object GhostlockRunner {
     fun isKernelSupported(context: Context, release: String): Boolean =
         GhostlockProfileConfiguration.hasProfile(context, release)
 
-    private fun runOnce(context: Context, onOutput: (String) -> Unit): Result {
-        val workDir = File(context.filesDir, WORK_DIR_NAME)
-        if (!workDir.exists() && !workDir.mkdirs()) {
-            return Result(false, false, "Unable to create GhostLock working directory")
-        }
-        val packagedBinary = File(context.applicationInfo.nativeLibraryDir, BINARY_NAME)
-        if (!packagedBinary.isFile) {
-            return Result(false, false, "GhostLock payload is not present in this APK")
-        }
-        // Match the native payload's uname(2) check; os.version can be stale
-        // or "unknown" on Android, including some RedMagic builds.
+    fun run(context: Context, onOutput: (String) -> Unit = {}): Result {
         val release = GhostlockKernelRelease.current()
-        if (!isKernelSupported(context, release)) {
-            return Result(false, false, "No bundled GhostLock profile for $release")
-        }
-        val cpuPair = GhostlockCpuPairCatalog.selected(context, release)
+        val pair = GhostlockCpuPairCatalog.selected(context, release)
         val profile = try {
-            GhostlockProfileConfiguration.resolve(context, release, cpuPair.main, cpuPair.consumer)
+            GhostlockProfileConfiguration.resolve(context, release, pair.main, pair.consumer)
         } catch (error: Exception) {
             return Result(false, false, "Unable to resolve GhostLock profile: ${error.message}")
         }
-        val profileFile = File(workDir, PROFILE_NAME)
-        profileFile.writeText(profile)
-        val packagedKsud = getKsuDaemonFile()
-        if (!packagedKsud.isFile) {
-            return Result(false, false, "ZSU ksud is not present in this APK")
-        }
-        val output = StringBuilder()
-        val process = try {
-            ProcessBuilder(packagedBinary.absolutePath, "--profile", profileFile.absolutePath)
-                .directory(workDir)
-                .redirectErrorStream(true)
-                .apply {
-                    val env = environment()
-                    env["GHOSTLOCK_HOME"] = workDir.absolutePath
-                    env["TMPDIR"] = workDir.absolutePath
-                    env["HOME"] = workDir.absolutePath
-                    env["GHOSTLOCK_KSUD"] = packagedKsud.absolutePath
-                    // Keep the native stage/profile diagnostics in the UI when
-                    // a device-specific route fails before the handoff log.
-                    env["GHOSTLOCK_VERBOSE_DEBUG"] = "1"
-                    // The native runtime applies explicit CPU choices from these variables.
-                    env["GHOSTLOCK_CORE"] = cpuPair.main.toString()
-                    env["GHOSTLOCK_CONSUMER_CORE"] = cpuPair.consumer.toString()
-                }
-                .start()
-        } catch (error: IOException) {
-            return Result(false, false, "Unable to start GhostLock: ${error.message}")
-        }
-        val reader = thread(start = true, name = "ghostlock-output-reader", isDaemon = true) {
-            try {
-                process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line ->
-                        synchronized(output) { output.append(line).append('\n') }
-                        if (line.isNotBlank()) runCatching { onOutput(line.trim()) }
-                    }
-                }
-            } catch (_: IOException) {
-            }
-        }
-        val finished = try {
-            process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        } catch (error: InterruptedException) {
-            Thread.currentThread().interrupt()
-            process.destroyForcibly()
-            false
-        }
-        if (!finished) {
-            process.destroy()
-            if (!process.waitFor(5, TimeUnit.SECONDS)) process.destroyForcibly()
-        }
-        reader.join(3000)
-        val ksuLog = File(workDir, LOG_NAME)
-        if (ksuLog.isFile) {
-            synchronized(output) {
-                output.append("\n--- KernelSU handoff log ---\n")
-                    .append(runCatching { ksuLog.readText() }.getOrDefault(""))
-            }
-        }
-        val exitCode = if (finished) process.exitValue() else -1
-        val finalOutput = synchronized(output) { output.toString().trim() }
-        val prefix = when {
-            !finished -> "GhostLock timed out after $TIMEOUT_SECONDS seconds"
-            exitCode == 137 ->
-                "GhostLock was killed by SIGKILL (137), usually Android memory/process pressure; " +
-                    "helper cleanup has been hardened, so reboot before retrying"
-            exitCode > 128 ->
-                "GhostLock was terminated by signal ${exitCode - 128} (exit $exitCode)"
-            else -> "GhostLock exited with code $exitCode"
-        }
-        runCatching { File(workDir, RESULT_LOG_NAME).writeText(finalOutput) }
-        return Result(
-            finished && exitCode == 0,
-            !finished,
-            listOf(prefix, finalOutput).filter { it.isNotBlank() }.joinToString("\n"),
-        )
+        return run(context, profile, onOutput)
     }
 
-    fun run(context: Context, onOutput: (String) -> Unit = {}): Result {
-        /* A failed native run may have touched PI/futex state even when its
-         * userspace exit code is non-zero. Retrying immediately can reuse a
-         * kernel object graph that the first attempt failed to disarm and can
-         * turn a recoverable failure into a device reboot. Require a fresh boot
-         * and an explicit user decision before another attempt. */
-        return runOnce(context, onOutput)
+    internal fun run(
+        context: Context,
+        profile: ResolvedGhostlockProfile,
+        onOutput: (String) -> Unit = {},
+    ): Result {
+        GhostlockOperationLock.tryAcquire()?.use {
+            val workDir = File(context.filesDir, WorkDirectoryName)
+            if (!workDir.isDirectory && !workDir.mkdirs()) {
+                return Result(false, false, "Unable to create GhostLock working directory")
+            }
+            val binary = File(context.applicationInfo.nativeLibraryDir, BinaryName)
+            val ksud = getKsuDaemonFile()
+            if (!binary.isFile) return Result(false, false, "GhostLock payload is not present in this APK")
+            if (!ksud.isFile) return Result(false, false, "ZSU ksud is not present in this APK")
+
+            val runState = GhostlockRunState(File(workDir, ".ghostlock_run_state.json"))
+            runState.reset()
+            val native = try {
+                GhostlockProcess.run(binary, ksud, profile.bytes, workDir, onOutput) { step, status ->
+                    if (status == "disabled") runState.clear() else runState.apply(step, status)
+                }
+            } catch (error: Exception) {
+                return Result(false, false, "Unable to start GhostLock: ${error.message}")
+            }
+            val prefix = when {
+                native.timedOut -> "GhostLock timed out after 300 seconds"
+                native.exitCode == 137 ->
+                    "GhostLock was killed by SIGKILL (137), usually Android memory/process pressure; reboot before retrying"
+                native.exitCode > 128 ->
+                    "GhostLock was terminated by signal ${native.exitCode - 128} (exit ${native.exitCode})"
+                else -> "GhostLock exited with code ${native.exitCode}"
+            }
+            val output = listOf(prefix, native.output).filter(String::isNotBlank).joinToString("\n")
+            runCatching { File(workDir, ResultLogName).writeText(output) }
+            return Result(!native.timedOut && native.exitCode == 0, native.timedOut, output)
+        }
+        return Result(false, false, "Another GhostLock operation is already running")
     }
 }
