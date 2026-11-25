@@ -27,6 +27,10 @@ apksign {
 android {
     namespace = "com.rifsxd.ksunext"
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     defaultConfig {
         // zsu private fork: unique app identity (GUI/code stays identical)
         applicationId = "com.zsu.zsu"
@@ -188,4 +192,9 @@ dependencies {
     implementation(libs.lsposed.cxx)
 
     implementation(libs.mmrl.ui)
+
+    implementation(project(":profile-core"))
+    implementation("com.typesafe:config:1.4.9")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
 }

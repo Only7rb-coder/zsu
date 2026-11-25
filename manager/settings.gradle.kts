@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "KernelSU-Next"
 include(":app")
+include(":profile-core")
