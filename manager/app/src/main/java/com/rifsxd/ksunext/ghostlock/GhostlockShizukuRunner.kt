@@ -49,6 +49,16 @@ class GhostlockShizukuRunner(private val context: Context) {
         }
     }
 
+    fun requestPermission() {
+        runCatching {
+            if (Shizuku.pingBinder() &&
+                Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED
+            ) {
+                Shizuku.requestPermission(PermissionRequestCode)
+            }
+        }
+    }
+
     @SuppressLint("RestrictedApi")
     private fun ready(onLog: (String) -> Unit): Boolean {
         val failure = runCatching {
@@ -189,5 +199,6 @@ class GhostlockShizukuRunner(private val context: Context) {
 
     private companion object {
         const val ConnectTimeoutMs = 3_000L
+        const val PermissionRequestCode = 4815
     }
 }

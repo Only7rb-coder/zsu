@@ -24,6 +24,14 @@ internal object GhostlockProfileConfiguration {
         true
     }.getOrDefault(false)
 
+    fun hasBuiltin(context: Context, release: String): Boolean = runCatching {
+        val loader = GhostlockAssetLoader(context)
+        val index = parse(loader.load("$Directory/index.conf"))
+        require((index["schema_version"] as? Number)?.toInt() == 1)
+        val entries = index["profiles"] as? List<*> ?: error("missing profile index")
+        entries.mapNotNull { it.asValueMap() }.any { it["release"] == release }
+    }.getOrDefault(false)
+
     fun resolve(
         context: Context,
         release: String,
