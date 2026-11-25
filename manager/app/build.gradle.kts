@@ -121,6 +121,34 @@ tasks.register<Copy>("mergeScripts") {
 
 val ghostlockDir = rootProject.file("ghostlock")
 val ghostlockBinary = ghostlockDir.resolve("build/native/ghostlock")
+val ghostlockExtractDir = ghostlockDir.resolve("tools/extract_rs")
+val ghostlockExtractBinary = ghostlockDir.resolve(
+    "build/extract/aarch64-linux-android/release/ghostlock-extract",
+)
+
+val ghostlockProperties = java.util.Properties().apply {
+    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use(::load)
+}
+val ghostlockSdkDir = ghostlockProperties.getProperty("sdk.dir")
+    ?: System.getenv("ANDROID_HOME")
+    ?: System.getenv("ANDROID_SDK_ROOT")
+val ghostlockNdkDir = (
+    System.getenv("ANDROID_NDK_HOME")
+        ?: System.getenv("ANDROID_NDK_ROOT")
+        ?: ghostlockProperties.getProperty("ndk.dir")
+        ?: ghostlockSdkDir?.let { File(it, "ndk/${libs.versions.ndk.get()}").absolutePath }
+    )?.let(::File)
+val ghostlockHost = when {
+    System.getProperty("os.name").lowercase().contains("windows") -> "windows-x86_64"
+    System.getProperty("os.name").lowercase().contains("mac") -> "darwin-x86_64"
+    else -> "linux-x86_64"
+}
+val ghostlockIsWindows = System.getProperty("os.name").lowercase().contains("windows")
+val ghostlockNdkBin = ghostlockNdkDir?.resolve("toolchains/llvm/prebuilt/$ghostlockHost/bin")
+val ghostlockClang34 = ghostlockNdkBin?.resolve(
+    if (ghostlockIsWindows) "aarch64-linux-android34-clang.cmd" else "aarch64-linux-android34-clang",
+)
+val ghostlockLlvmAr = ghostlockNdkBin?.resolve(if (ghostlockIsWindows) "llvm-ar.exe" else "llvm-ar")
 
 tasks.register<Exec>("buildGhostlockNative") {
     workingDir(ghostlockDir)
@@ -144,9 +172,41 @@ tasks.register<Copy>("packageGhostlockNative") {
     rename { "libghostlock.so" }
 }
 
+tasks.register<Exec>("buildGhostlockExtract") {
+    workingDir(ghostlockExtractDir)
+    commandLine("cargo", "build", "--release", "--locked", "--target", "aarch64-linux-android")
+    environment("CARGO_TARGET_DIR", ghostlockDir.resolve("build/extract").absolutePath)
+    ghostlockClang34?.let {
+        environment("CC_aarch64_linux_android", it.absolutePath)
+        environment("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", it.absolutePath)
+    }
+    ghostlockLlvmAr?.let { environment("AR_aarch64_linux_android", it.absolutePath) }
+    environment("RUSTFLAGS", "-C force-unwind-tables=no -C link-arg=-Wl,--icf=all")
+    inputs.files(
+        fileTree(ghostlockExtractDir) { include("src/**/*.rs") },
+        ghostlockExtractDir.resolve("Cargo.toml"),
+        ghostlockExtractDir.resolve("Cargo.lock"),
+    )
+    outputs.file(ghostlockExtractBinary)
+}
+
+tasks.register<Copy>("packageGhostlockExtract") {
+    dependsOn("buildGhostlockExtract")
+    from(ghostlockExtractBinary)
+    into(layout.buildDirectory.dir("generated/ghostlock-jni/arm64-v8a"))
+    rename { "libextract.so" }
+}
+
 tasks.named("preBuild") {
     dependsOn("mergeScripts")
+}
+
+tasks.matching { task ->
+    (task.name.startsWith("merge") && task.name.endsWith("JniLibFolders")) ||
+        (task.name.startsWith("merge") && task.name.endsWith("NativeLibs"))
+}.configureEach {
     dependsOn("packageGhostlockNative")
+    dependsOn("packageGhostlockExtract")
 }
 
 dependencies {
@@ -195,6 +255,7 @@ dependencies {
 
     implementation(project(":profile-core"))
     implementation("com.typesafe:config:1.4.9")
+    implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
     testImplementation("junit:junit:4.13.2")

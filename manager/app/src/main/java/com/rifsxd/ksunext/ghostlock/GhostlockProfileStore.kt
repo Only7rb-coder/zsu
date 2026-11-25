@@ -1,5 +1,10 @@
 package com.rifsxd.ksunext.ghostlock
 
+import com.ghostlock.app.data.HoconSupport
+import com.ghostlock.app.data.ValueList
+import com.ghostlock.app.data.ValueMap
+import com.ghostlock.app.data.asValueMap
+import com.ghostlock.app.data.copyValue
 import java.io.File
 import java.nio.charset.StandardCharsets
 
@@ -11,7 +16,7 @@ import java.nio.charset.StandardCharsets
  */
 internal class GhostlockProfileStore(
     val directory: File,
-    private val assetLoader: AssetConfigLoader,
+    private val assetLoader: GhostlockAssetLoader,
 ) {
     private companion object {
         const val BuiltinDirectory = "kernel_profiles"
