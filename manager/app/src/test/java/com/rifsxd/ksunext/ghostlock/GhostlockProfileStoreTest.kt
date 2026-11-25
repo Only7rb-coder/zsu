@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ghostlock
 
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -7,9 +8,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class GhostlockProfileStoreTest {
     @Test
     fun importedTextIsStoredVerbatim() {

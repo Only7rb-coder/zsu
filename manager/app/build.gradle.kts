@@ -4,6 +4,7 @@ import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import com.android.build.gradle.tasks.PackageAndroidArtifact
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Exec
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.agp.app)
@@ -103,6 +104,12 @@ android {
     androidResources {
         generateLocaleConfig = true
     }
+
+    testOptions {
+        unitTests.all {
+            it.jvmArgs("--add-exports", "java.base/jdk.internal.access=ALL-UNNAMED")
+        }
+    }
 }
 
 ksp {
@@ -126,8 +133,8 @@ val ghostlockExtractBinary = ghostlockDir.resolve(
     "build/extract/aarch64-linux-android/release/ghostlock-extract",
 )
 
-val ghostlockProperties = java.util.Properties().apply {
-    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use(::load)
+val ghostlockProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf(File::isFile)?.inputStream()?.use { load(it) }
 }
 val ghostlockSdkDir = ghostlockProperties.getProperty("sdk.dir")
     ?: System.getenv("ANDROID_HOME")
@@ -277,5 +284,6 @@ dependencies {
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.test:core:1.7.0")
     testImplementation("org.robolectric:robolectric:4.17")
 }

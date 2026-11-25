@@ -102,10 +102,11 @@ internal class GhostlockProfileStore(
      * [preferredName] there is no imported layer.
      */
     fun loadEntry(release: String, preferredName: String?): ValueMap? {
+        if (preferredName == null) return null
+        val file = fileByName(preferredName) ?: return null
         val byName = documents()
-        val file = preferredName?.let(::fileByName) ?: return null
-        val text = runCatching { file.readText() }.getOrNull() ?: return null
-        val entries = runCatching { parseWith(text, byName) }.getOrNull() ?: return null
+        val text = file.readText()
+        val entries = parseWith(text, byName)
         return entries.firstOrNull { it["release"] == release }?.also { entry ->
             LegacyGhostlockProfileConverter.convertValue(entry)
         }

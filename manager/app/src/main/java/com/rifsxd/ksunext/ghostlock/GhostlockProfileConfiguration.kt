@@ -57,7 +57,11 @@ internal object GhostlockProfileConfiguration {
             java.io.File(context.filesDir, "ghostlock/user_profiles"),
             loader,
         )
-        val imported = store.loadEntry(release, store.selected(context))
+        val selectedImport = store.selected(context)
+        val imported = store.loadEntry(release, selectedImport)
+        require(selectedImport == null || imported != null) {
+            "selected GhostLock import does not contain kernel: $release"
+        }
         require(builtin != null || imported != null) { "no GhostLock profile for kernel: $release" }
         val tuning = parse(loader.load("$Directory/execution-tuning.conf"))["execution"].asValueMap()
         val presets = RouteKind.entries.mapNotNull { route ->
@@ -78,6 +82,10 @@ internal object GhostlockProfileConfiguration {
         val fallback = (merged["fallback"].asValueMap()?.get("to") as? String)
         val errors = ProfileResolver.validateMerged(merged, route, fallback)
         require(errors.isEmpty()) { errors.joinToString { "${it.fieldPath}: ${it.message}" } }
+        val geometryErrors = GhostlockProfileGeometry.validate(merged, route, fallback)
+        require(geometryErrors.isEmpty()) {
+            "invalid GhostLock geometry: ${geometryErrors.joinToString()}"
+        }
         val document = NativeProfileDocument.from(release, route, fallback) { path ->
             ProfileResolver.nativeValue(merged, route, fallback, path)
         }

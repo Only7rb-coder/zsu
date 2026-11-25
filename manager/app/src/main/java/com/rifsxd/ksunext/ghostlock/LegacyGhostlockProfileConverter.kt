@@ -1,5 +1,10 @@
 package com.rifsxd.ksunext.ghostlock
 
+import com.ghostlock.app.data.ValueMap
+import com.ghostlock.app.data.asValueMap
+import com.ghostlock.app.data.mutableChild
+import com.ghostlock.app.data.valueMapOf
+
 /**
  * Converts remote/main-era offsets.json entries into the current layout.
  *
