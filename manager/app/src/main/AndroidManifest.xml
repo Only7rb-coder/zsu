@@ -10,6 +10,15 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="com.zsu.zsu" />
+        <package android:name="me.weishu.kernelsu.pr" />
+        <package android:name="me.weishu.kernelsu" />
+        <package android:name="com.sukisu.ultra.pr" />
+        <package android:name="com.sukisu.ultra" />
+        <package android:name="com.resukisu.resukisu" />
+        <package android:name="org.bakasu.bakasu" />
+        <package android:name="com.kowx712.supermanager" />
     </queries>
 
     <application
@@ -116,6 +125,19 @@
             android:documentLaunchMode="intoExisting"
             android:exported="false"
             android:theme="@style/Theme.KernelSU.WebUI" />
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <service
+            android:name=".ghostlock.GhostlockUserService"
+            android:exported="false"
+            tools:ignore="Instantiatable" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
