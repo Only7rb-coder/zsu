@@ -1,4 +1,4 @@
-# ZSU v1.5.3
+# ZSU v1.5.4
 
 ## Security and reliability
 

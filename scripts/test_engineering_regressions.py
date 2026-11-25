@@ -52,7 +52,8 @@ class EngineeringRegressionTests(unittest.TestCase):
         identity = block(su, "fn set_identity(", "fn wrap_tty(")
         self.assertIn("fn set_identity(uid: u32, gid: u32, groups: &[u32]) -> Result<()>", identity)
         self.assertNotIn(".ok();", identity)
-        self.assertIn("set_identity(uid, gid, &groups)?;", su)
+        self.assertIn("set_identity(uid, gid, &groups)", su)
+        self.assertIn('std::io::Error::other(format!("{error:#}"))', su)
 
     def test_manager_quotes_shell_arguments(self) -> None:
         cli = read(
