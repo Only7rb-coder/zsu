@@ -1,4 +1,4 @@
-# ZSU v1.5.5
+# ZSU v1.5.6
 
 ## GhostLock upstream synchronization
 
@@ -10,9 +10,9 @@
 
 ## Build and verification
 
-- Install the required `aarch64-linux-android` Rust target in both Manager build workflows.
+- Install the required `aarch64-linux-android` Rust target and explicitly select the declared NDK 29 toolchain in both Manager build workflows.
 - Verify 258 pinned upstream files and all 79 device profiles against the recorded upstream revision.
-- Pass 13 engineering regression tests, 45 Android/JVM unit tests, native packaging, profile export, and native static analysis checks.
+- Pass 14 engineering regression tests, 45 Android/JVM unit tests, native packaging, profile export, and native static analysis checks.
 - Build the release APKs and kernel artifacts through the GitHub Actions release workflow and publish verified SHA-256 checksums.
 
 Direct-root, Shizuku, and SOG10 behavior still requires testing on physical devices; successful builds and host tests do not establish on-device compatibility.

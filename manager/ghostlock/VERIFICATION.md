@@ -21,7 +21,7 @@ Local toolchain: JDK `21.0.13.1+2`, Android SDK 36, build tools `36.1.0`, and ND
 | Locked Rust extractor tests | `cargo test --manifest-path manager/ghostlock/tools/extract_rs/Cargo.toml --locked` | PENDING | Rust is installed locally, but neither the MSVC nor GNU Windows host setup provides a working complete linker toolchain; no tests ran. |
 | Pinned source/asset parity | `python manager/ghostlock/tools/verify_upstream_sync.py --source <upstream> --root .` | PASS | 258 pinned source/asset files and 79 non-template profiles verified at the pinned commit; obsolete JSON/CPU launch contract is absent. |
 | OTA adapter parity | Compare five Kotlin files after their package lines | PASS | All five files differ from upstream only in package name. |
-| Repository engineering regressions | `python scripts/test_engineering_regressions.py` | PASS | All 13 tests passed, including the Android Rust target setup contract for both Manager assembly workflows. |
+| Repository engineering regressions | `python scripts/test_engineering_regressions.py` | PASS | All 14 tests passed, including Android Rust target and declared NDK 29 setup contracts for both Manager assembly workflows. |
 | Manifest/resources and patch whitespace | XML parsers and `git diff --check` | PASS | Android manifest and English strings parsed; no whitespace errors. |
 | APK contents | Inspect ARM64 libraries and 89 HOCON assets | PENDING | Requires a successful APK build. |
 | SOG10 device gate | Sony Xperia 1 V / `5.15.189-android13-8-00004-g1c3825f8ac0a-ab14110541` | PENDING | Profile is bundled and host-resolves; on-device behavior is not verified. |

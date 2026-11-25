@@ -129,6 +129,19 @@ class EngineeringRegressionTests(unittest.TestCase):
                 workflow = read(f".github/workflows/{workflow_name}")
                 self.assertIn("rustup target add aarch64-linux-android", workflow)
 
+    def test_manager_builds_pin_the_declared_ghostlock_ndk(self) -> None:
+        versions = read("manager/gradle/libs.versions.toml")
+        ndk = re.search(r'^ndk = "([^"]+)"', versions, re.MULTILINE).group(1)
+        for workflow_name in ("build-manager.yml", "build-manager-ci.yml"):
+            with self.subTest(workflow=workflow_name):
+                workflow = read(f".github/workflows/{workflow_name}")
+                self.assertIn(f'sdkmanager "ndk;{ndk}"', workflow)
+                for variable in ("ANDROID_NDK_HOME", "ANDROID_NDK_ROOT"):
+                    self.assertIn(
+                        f'echo "{variable}=$ANDROID_HOME/ndk/{ndk}" >> "$GITHUB_ENV"',
+                        workflow,
+                    )
+
     def test_release_publishes_and_verifies_sha256_checksums(self) -> None:
         workflow = read(".github/workflows/release.yml")
         self.assertIn("SHA256SUMS", workflow)
