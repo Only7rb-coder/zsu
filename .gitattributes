@@ -1,1 +1,4 @@
 *.bat eol=crlf
+
+# Pinned GhostLock sources are mirrored byte-for-byte, including upstream EOF whitespace.
+manager/ghostlock/src/** whitespace=-blank-at-eof

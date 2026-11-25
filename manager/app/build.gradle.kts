@@ -116,16 +116,19 @@ tasks.register<Copy>("mergeScripts") {
 }
 
 val ghostlockDir = rootProject.file("ghostlock")
-val ghostlockBinary = ghostlockDir.resolve("ghostlock")
+val ghostlockBinary = ghostlockDir.resolve("build/native/ghostlock")
 
 tasks.register<Exec>("buildGhostlockNative") {
     workingDir(ghostlockDir)
     commandLine("make", "ghostlock", "API=35")
     inputs.files(fileTree(ghostlockDir) {
         include("Makefile")
+        include("src/Makefile")
+        include("src/.clang-tidy")
         include("src/**/*.c")
         include("src/**/*.h")
-        include("src/**/*.json")
+        include("src/**/*.cpp")
+        include("src/**/*.hpp")
     })
     outputs.file(ghostlockBinary)
 }
