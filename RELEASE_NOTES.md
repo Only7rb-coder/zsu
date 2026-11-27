@@ -15,4 +15,8 @@
 - Pass 14 engineering regression tests, 45 Android/JVM unit tests, native packaging, profile export, and native static analysis checks.
 - Build the release APKs and kernel artifacts through the GitHub Actions release workflow and publish verified SHA-256 checksums.
 
+## Installation note
+
+The normal v1.5.6 and v1.5.4 APKs use different CI-generated Android Debug signing certificates, so they are not signature-compatible for an in-place upgrade. Back up manager settings and uninstall the previous manager before installing this APK.
+
 Direct-root, Shizuku, and SOG10 behavior still requires testing on physical devices; successful builds and host tests do not establish on-device compatibility.

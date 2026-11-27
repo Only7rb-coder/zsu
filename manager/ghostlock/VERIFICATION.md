@@ -23,7 +23,12 @@ Local toolchain: JDK `21.0.13.1+2`, Android SDK 36, build tools `36.1.0`, and ND
 | OTA adapter parity | Compare five Kotlin files after their package lines | PASS | All five files differ from upstream only in package name. |
 | Repository engineering regressions | `python scripts/test_engineering_regressions.py` | PASS | All 14 tests passed, including Android Rust target and declared NDK 29 setup contracts for both Manager assembly workflows. |
 | Manifest/resources and patch whitespace | XML parsers and `git diff --check` | PASS | Android manifest and English strings parsed; no whitespace errors. |
-| APK contents | Inspect ARM64 libraries and 89 HOCON assets | PENDING | Requires a successful APK build. |
+| APK contents | Inspect both v1.5.6 release APKs | PASS | Normal and spoofed APKs are valid ZIP archives; each contains the 383,728-byte AArch64 GhostLock executable and all 89 HOCON assets. |
+| v1.5.6 release workflow | GitHub Actions run `45640381355` | PASS | Completed successfully at tag target `3bbc1a5b5d43d53758d3ceabc4605ffe91129440`. |
+| Release asset integrity | Download release and verify `SHA256SUMS` | PASS | All 15 checksummed assets match; both APKs report version code 33391 and the expected normal/spoofed package metadata. |
+| APK signatures and upgrade path | `apksigner verify --print-certs`; compare v1.5.4 | PASS with installation caveat | Both v1.5.6 signatures verify. Their CI-generated Android Debug certificates differ from v1.5.4, so the normal APK requires a clean manager install rather than an in-place upgrade. |
 | SOG10 device gate | Sony Xperia 1 V / `5.15.189-android13-8-00004-g1c3825f8ac0a-ab14110541` | PENDING | Profile is bundled and host-resolves; on-device behavior is not verified. |
+
+Release: https://github.com/Only7rb-coder/zsu/releases/tag/v1.5.6
 
 Source/host verification completed where available; on-device behavior is not verified.
